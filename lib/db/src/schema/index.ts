@@ -8,3 +8,4 @@ export * from "./ai";
 export * from "./security";
 export * from "./notifications";
 export * from "./delay_configs";
+export * from "./app_settings";

@@ -588,6 +588,34 @@ export interface Notification {
   createdAt: string;
 }
 
+export interface AppSetting {
+  id: number;
+  key: string;
+  /** @nullable */
+  value?: string | null;
+  isSecret: boolean;
+  /** @nullable */
+  description?: string | null;
+  updatedAt: string;
+}
+
+export interface AppSettingValue {
+  key: string;
+  /** @nullable */
+  value: string | null;
+}
+
+export type UpsertSettingsInputSettingsItem = {
+  key: string;
+  value: string;
+  isSecret: boolean;
+  description?: string;
+};
+
+export interface UpsertSettingsInput {
+  settings: UpsertSettingsInputSettingsItem[];
+}
+
 export type DelayConfigTypingSpeed = typeof DelayConfigTypingSpeed[keyof typeof DelayConfigTypingSpeed];
 
 

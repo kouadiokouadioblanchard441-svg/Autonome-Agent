@@ -11,6 +11,7 @@ import securityRouter from "./security";
 import analyticsRouter from "./analytics";
 import notificationsRouter from "./notifications";
 import delayRouter from "./delay";
+import settingsRouter from "./settings";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(securityRouter);
 router.use(analyticsRouter);
 router.use(notificationsRouter);
 router.use(delayRouter);
+router.use(settingsRouter);
 
 export default router;

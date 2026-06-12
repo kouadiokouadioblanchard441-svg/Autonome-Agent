@@ -1006,6 +1006,58 @@ export const GetAccountActivityStatusResponse = zod.object({
 })
 
 
+/**
+ * @summary Get all settings (secrets masked)
+ */
+export const ListSettingsResponseItem = zod.object({
+  "id": zod.number(),
+  "key": zod.string(),
+  "value": zod.string().nullish(),
+  "isSecret": zod.boolean(),
+  "description": zod.string().nullish(),
+  "updatedAt": zod.string()
+})
+export const ListSettingsResponse = zod.array(ListSettingsResponseItem)
+
+
+/**
+ * @summary Upsert multiple settings at once
+ */
+export const UpsertSettingsBody = zod.object({
+  "settings": zod.array(zod.object({
+  "key": zod.string(),
+  "value": zod.string(),
+  "isSecret": zod.boolean(),
+  "description": zod.string().optional()
+}))
+})
+
+export const UpsertSettingsResponseItem = zod.object({
+  "id": zod.number(),
+  "key": zod.string(),
+  "value": zod.string().nullish(),
+  "isSecret": zod.boolean(),
+  "description": zod.string().nullish(),
+  "updatedAt": zod.string()
+})
+export const UpsertSettingsResponse = zod.array(UpsertSettingsResponseItem)
+
+
+export const GetSettingParams = zod.object({
+  "key": zod.coerce.string()
+})
+
+export const GetSettingResponse = zod.object({
+  "key": zod.string(),
+  "value": zod.string().nullable()
+})
+
+
+export const DeleteSettingParams = zod.object({
+  "key": zod.coerce.string()
+})
+
+
 export const ListNotificationsResponseItem = zod.object({
   "id": zod.number(),
   "type": zod.enum(['info', 'warning', 'error', 'success', 'security', 'ai']),

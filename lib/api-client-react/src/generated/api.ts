@@ -31,6 +31,8 @@ import type {
   AccountsStats,
   ActivityDataPoint,
   ActivityStatus,
+  AppSetting,
+  AppSettingValue,
   Campaign,
   CampaignInput,
   CampaignUpdate,
@@ -60,7 +62,8 @@ import type {
   TelegramChannelUpdate,
   TelegramGroup,
   TelegramGroupInput,
-  TelegramGroupUpdate
+  TelegramGroupUpdate,
+  UpsertSettingsInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -3982,6 +3985,289 @@ export function useGetAccountActivityStatus<TData = Awaited<ReturnType<typeof ge
 
 
 
+
+export const getListSettingsUrl = () => {
+
+
+
+
+  return `/api/settings`
+}
+
+/**
+ * @summary Get all settings (secrets masked)
+ */
+export const listSettings = async ( options?: RequestInit): Promise<AppSetting[]> => {
+
+  return customFetch<AppSetting[]>(getListSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSettingsQueryKey = () => {
+    return [
+    `/api/settings`
+    ] as const;
+    }
+
+
+export const getListSettingsQueryOptions = <TData = Awaited<ReturnType<typeof listSettings>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSettings>>> = ({ signal }) => listSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof listSettings>>>
+export type ListSettingsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get all settings (secrets masked)
+ */
+
+export function useListSettings<TData = Awaited<ReturnType<typeof listSettings>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpsertSettingsUrl = () => {
+
+
+
+
+  return `/api/settings`
+}
+
+/**
+ * @summary Upsert multiple settings at once
+ */
+export const upsertSettings = async (upsertSettingsInput: UpsertSettingsInput, options?: RequestInit): Promise<AppSetting[]> => {
+
+  return customFetch<AppSetting[]>(getUpsertSettingsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      upsertSettingsInput,)
+  }
+);}
+
+
+
+
+export const getUpsertSettingsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertSettings>>, TError,{data: BodyType<UpsertSettingsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof upsertSettings>>, TError,{data: BodyType<UpsertSettingsInput>}, TContext> => {
+
+const mutationKey = ['upsertSettings'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof upsertSettings>>, {data: BodyType<UpsertSettingsInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  upsertSettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpsertSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof upsertSettings>>>
+    export type UpsertSettingsMutationBody = BodyType<UpsertSettingsInput>
+    export type UpsertSettingsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Upsert multiple settings at once
+ */
+export const useUpsertSettings = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertSettings>>, TError,{data: BodyType<UpsertSettingsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof upsertSettings>>,
+        TError,
+        {data: BodyType<UpsertSettingsInput>},
+        TContext
+      > => {
+      return useMutation(getUpsertSettingsMutationOptions(options));
+    }
+
+export const getGetSettingUrl = (key: string,) => {
+
+
+
+
+  return `/api/settings/${key}`
+}
+
+export const getSetting = async (key: string, options?: RequestInit): Promise<AppSettingValue> => {
+
+  return customFetch<AppSettingValue>(getGetSettingUrl(key),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSettingQueryKey = (key: string,) => {
+    return [
+    `/api/settings/${key}`
+    ] as const;
+    }
+
+
+export const getGetSettingQueryOptions = <TData = Awaited<ReturnType<typeof getSetting>>, TError = ErrorType<unknown>>(key: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSetting>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSettingQueryKey(key);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSetting>>> = ({ signal }) => getSetting(key, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(key), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSetting>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSettingQueryResult = NonNullable<Awaited<ReturnType<typeof getSetting>>>
+export type GetSettingQueryError = ErrorType<unknown>
+
+
+
+export function useGetSetting<TData = Awaited<ReturnType<typeof getSetting>>, TError = ErrorType<unknown>>(
+ key: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSetting>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSettingQueryOptions(key,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getDeleteSettingUrl = (key: string,) => {
+
+
+
+
+  return `/api/settings/${key}`
+}
+
+export const deleteSetting = async (key: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteSettingUrl(key),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteSettingMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSetting>>, TError,{key: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteSetting>>, TError,{key: string}, TContext> => {
+
+const mutationKey = ['deleteSetting'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteSetting>>, {key: string}> = (props) => {
+          const {key} = props ?? {};
+
+          return  deleteSetting(key,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteSettingMutationResult = NonNullable<Awaited<ReturnType<typeof deleteSetting>>>
+
+    export type DeleteSettingMutationError = ErrorType<unknown>
+
+    export const useDeleteSetting = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSetting>>, TError,{key: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteSetting>>,
+        TError,
+        {key: string},
+        TContext
+      > => {
+      return useMutation(getDeleteSettingMutationOptions(options));
+    }
 
 export const getListNotificationsUrl = () => {
 

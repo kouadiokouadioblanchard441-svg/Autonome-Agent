@@ -31,6 +31,8 @@ tags:
     description: Notifications management
   - name: delay
     description: Human delay engine configuration
+  - name: settings
+    description: Application settings and secrets
 
 paths:
   /healthz:
@@ -968,6 +970,71 @@ paths:
               schema:
                 $ref: "#/components/schemas/ActivityStatus"
 
+  # ── APP SETTINGS ──────────────────────────────────────
+  /settings:
+    get:
+      operationId: listSettings
+      tags: [settings]
+      summary: Get all settings (secrets masked)
+      responses:
+        "200":
+          description: All settings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AppSetting"
+    put:
+      operationId: upsertSettings
+      tags: [settings]
+      summary: Upsert multiple settings at once
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertSettingsInput"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AppSetting"
+
+  /settings/{key}:
+    get:
+      operationId: getSetting
+      tags: [settings]
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Setting value (unmasked)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppSettingValue"
+    delete:
+      operationId: deleteSetting
+      tags: [settings]
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
   # ── NOTIFICATIONS ─────────────────────────────────────
   /notifications:
     get:
@@ -1689,6 +1756,52 @@ components:
           type: ["integer", "null"]
         createdAt:
           type: string
+
+    # ── APP SETTINGS ──────────────────────────────────────
+    AppSetting:
+      type: object
+      required: [id, key, isSecret, updatedAt]
+      properties:
+        id:
+          type: integer
+        key:
+          type: string
+        value:
+          type: ["string", "null"]
+        isSecret:
+          type: boolean
+        description:
+          type: ["string", "null"]
+        updatedAt:
+          type: string
+
+    AppSettingValue:
+      type: object
+      required: [key, value]
+      properties:
+        key:
+          type: string
+        value:
+          type: ["string", "null"]
+
+    UpsertSettingsInput:
+      type: object
+      required: [settings]
+      properties:
+        settings:
+          type: array
+          items:
+            type: object
+            required: [key, value, isSecret]
+            properties:
+              key:
+                type: string
+              value:
+                type: string
+              isSecret:
+                type: boolean
+              description:
+                type: string
 
     # ── DELAY CONFIG ──────────────────────────────────────
     DelayConfig:
