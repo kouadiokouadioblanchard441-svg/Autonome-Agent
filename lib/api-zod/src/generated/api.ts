@@ -749,6 +749,263 @@ export const GetEngagementStatsResponseItem = zod.object({
 export const GetEngagementStatsResponse = zod.array(GetEngagementStatsResponseItem)
 
 
+/**
+ * @summary List all delay configurations
+ */
+export const ListDelayConfigsResponseItem = zod.object({
+  "id": zod.number(),
+  "accountId": zod.number().nullish(),
+  "groupId": zod.number().nullish(),
+  "name": zod.string(),
+  "isGlobal": zod.boolean(),
+  "minReplyDelay": zod.number(),
+  "maxReplyDelay": zod.number(),
+  "typingEnabled": zod.boolean(),
+  "typingSpeed": zod.enum(['slow', 'human', 'fast', 'variable']),
+  "onlineSimulation": zod.boolean(),
+  "nightSlowMode": zod.boolean(),
+  "randomBreaks": zod.boolean(),
+  "readingSimulation": zod.boolean(),
+  "readingSpeedWpm": zod.number(),
+  "priorityUsers": zod.string().optional(),
+  "priorityMultiplier": zod.number(),
+  "nightMultiplier": zod.number(),
+  "nightStartHour": zod.number(),
+  "nightEndHour": zod.number(),
+  "breakProbability": zod.number(),
+  "breakMinDuration": zod.number(),
+  "breakMaxDuration": zod.number(),
+  "activeHoursStart": zod.number(),
+  "activeHoursEnd": zod.number(),
+  "contextAdaptation": zod.boolean(),
+  "activePeriods": zod.string().optional(),
+  "cooldownMinutes": zod.number(),
+  "maxContinuousActiveMinutes": zod.number(),
+  "createdAt": zod.string()
+})
+export const ListDelayConfigsResponse = zod.array(ListDelayConfigsResponseItem)
+
+
+export const CreateDelayConfigBody = zod.object({
+  "name": zod.string().optional(),
+  "accountId": zod.number().optional(),
+  "groupId": zod.number().optional(),
+  "isGlobal": zod.boolean().optional(),
+  "minReplyDelay": zod.number().optional(),
+  "maxReplyDelay": zod.number().optional(),
+  "typingEnabled": zod.boolean().optional(),
+  "typingSpeed": zod.enum(['slow', 'human', 'fast', 'variable']).optional(),
+  "onlineSimulation": zod.boolean().optional(),
+  "nightSlowMode": zod.boolean().optional(),
+  "randomBreaks": zod.boolean().optional(),
+  "readingSimulation": zod.boolean().optional(),
+  "readingSpeedWpm": zod.number().optional(),
+  "priorityUsers": zod.string().optional(),
+  "priorityMultiplier": zod.number().optional(),
+  "nightMultiplier": zod.number().optional(),
+  "nightStartHour": zod.number().optional(),
+  "nightEndHour": zod.number().optional(),
+  "breakProbability": zod.number().optional(),
+  "breakMinDuration": zod.number().optional(),
+  "breakMaxDuration": zod.number().optional(),
+  "activeHoursStart": zod.number().optional(),
+  "activeHoursEnd": zod.number().optional(),
+  "contextAdaptation": zod.boolean().optional(),
+  "activePeriods": zod.string().optional(),
+  "cooldownMinutes": zod.number().optional(),
+  "maxContinuousActiveMinutes": zod.number().optional()
+})
+
+
+/**
+ * @summary Get the global delay config
+ */
+export const GetGlobalDelayConfigResponse = zod.object({
+  "id": zod.number(),
+  "accountId": zod.number().nullish(),
+  "groupId": zod.number().nullish(),
+  "name": zod.string(),
+  "isGlobal": zod.boolean(),
+  "minReplyDelay": zod.number(),
+  "maxReplyDelay": zod.number(),
+  "typingEnabled": zod.boolean(),
+  "typingSpeed": zod.enum(['slow', 'human', 'fast', 'variable']),
+  "onlineSimulation": zod.boolean(),
+  "nightSlowMode": zod.boolean(),
+  "randomBreaks": zod.boolean(),
+  "readingSimulation": zod.boolean(),
+  "readingSpeedWpm": zod.number(),
+  "priorityUsers": zod.string().optional(),
+  "priorityMultiplier": zod.number(),
+  "nightMultiplier": zod.number(),
+  "nightStartHour": zod.number(),
+  "nightEndHour": zod.number(),
+  "breakProbability": zod.number(),
+  "breakMinDuration": zod.number(),
+  "breakMaxDuration": zod.number(),
+  "activeHoursStart": zod.number(),
+  "activeHoursEnd": zod.number(),
+  "contextAdaptation": zod.boolean(),
+  "activePeriods": zod.string().optional(),
+  "cooldownMinutes": zod.number(),
+  "maxContinuousActiveMinutes": zod.number(),
+  "createdAt": zod.string()
+})
+
+
+export const GetDelayConfigParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetDelayConfigResponse = zod.object({
+  "id": zod.number(),
+  "accountId": zod.number().nullish(),
+  "groupId": zod.number().nullish(),
+  "name": zod.string(),
+  "isGlobal": zod.boolean(),
+  "minReplyDelay": zod.number(),
+  "maxReplyDelay": zod.number(),
+  "typingEnabled": zod.boolean(),
+  "typingSpeed": zod.enum(['slow', 'human', 'fast', 'variable']),
+  "onlineSimulation": zod.boolean(),
+  "nightSlowMode": zod.boolean(),
+  "randomBreaks": zod.boolean(),
+  "readingSimulation": zod.boolean(),
+  "readingSpeedWpm": zod.number(),
+  "priorityUsers": zod.string().optional(),
+  "priorityMultiplier": zod.number(),
+  "nightMultiplier": zod.number(),
+  "nightStartHour": zod.number(),
+  "nightEndHour": zod.number(),
+  "breakProbability": zod.number(),
+  "breakMinDuration": zod.number(),
+  "breakMaxDuration": zod.number(),
+  "activeHoursStart": zod.number(),
+  "activeHoursEnd": zod.number(),
+  "contextAdaptation": zod.boolean(),
+  "activePeriods": zod.string().optional(),
+  "cooldownMinutes": zod.number(),
+  "maxContinuousActiveMinutes": zod.number(),
+  "createdAt": zod.string()
+})
+
+
+export const UpdateDelayConfigParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateDelayConfigBody = zod.object({
+  "name": zod.string().optional(),
+  "accountId": zod.number().optional(),
+  "groupId": zod.number().optional(),
+  "isGlobal": zod.boolean().optional(),
+  "minReplyDelay": zod.number().optional(),
+  "maxReplyDelay": zod.number().optional(),
+  "typingEnabled": zod.boolean().optional(),
+  "typingSpeed": zod.enum(['slow', 'human', 'fast', 'variable']).optional(),
+  "onlineSimulation": zod.boolean().optional(),
+  "nightSlowMode": zod.boolean().optional(),
+  "randomBreaks": zod.boolean().optional(),
+  "readingSimulation": zod.boolean().optional(),
+  "readingSpeedWpm": zod.number().optional(),
+  "priorityUsers": zod.string().optional(),
+  "priorityMultiplier": zod.number().optional(),
+  "nightMultiplier": zod.number().optional(),
+  "nightStartHour": zod.number().optional(),
+  "nightEndHour": zod.number().optional(),
+  "breakProbability": zod.number().optional(),
+  "breakMinDuration": zod.number().optional(),
+  "breakMaxDuration": zod.number().optional(),
+  "activeHoursStart": zod.number().optional(),
+  "activeHoursEnd": zod.number().optional(),
+  "contextAdaptation": zod.boolean().optional(),
+  "activePeriods": zod.string().optional(),
+  "cooldownMinutes": zod.number().optional(),
+  "maxContinuousActiveMinutes": zod.number().optional()
+})
+
+export const UpdateDelayConfigResponse = zod.object({
+  "id": zod.number(),
+  "accountId": zod.number().nullish(),
+  "groupId": zod.number().nullish(),
+  "name": zod.string(),
+  "isGlobal": zod.boolean(),
+  "minReplyDelay": zod.number(),
+  "maxReplyDelay": zod.number(),
+  "typingEnabled": zod.boolean(),
+  "typingSpeed": zod.enum(['slow', 'human', 'fast', 'variable']),
+  "onlineSimulation": zod.boolean(),
+  "nightSlowMode": zod.boolean(),
+  "randomBreaks": zod.boolean(),
+  "readingSimulation": zod.boolean(),
+  "readingSpeedWpm": zod.number(),
+  "priorityUsers": zod.string().optional(),
+  "priorityMultiplier": zod.number(),
+  "nightMultiplier": zod.number(),
+  "nightStartHour": zod.number(),
+  "nightEndHour": zod.number(),
+  "breakProbability": zod.number(),
+  "breakMinDuration": zod.number(),
+  "breakMaxDuration": zod.number(),
+  "activeHoursStart": zod.number(),
+  "activeHoursEnd": zod.number(),
+  "contextAdaptation": zod.boolean(),
+  "activePeriods": zod.string().optional(),
+  "cooldownMinutes": zod.number(),
+  "maxContinuousActiveMinutes": zod.number(),
+  "createdAt": zod.string()
+})
+
+
+export const DeleteDelayConfigParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Preview timing values without sleeping
+ */
+export const PreviewDelayTimingBody = zod.object({
+  "minReplyDelay": zod.number(),
+  "maxReplyDelay": zod.number(),
+  "typingSpeed": zod.enum(['slow', 'human', 'fast', 'variable']).optional(),
+  "nightSlowMode": zod.boolean().optional(),
+  "readingSimulation": zod.boolean().optional(),
+  "readingSpeedWpm": zod.number().optional(),
+  "nightMultiplier": zod.number().optional(),
+  "contextAdaptation": zod.boolean().optional(),
+  "sampleMessage": zod.string().optional()
+})
+
+export const PreviewDelayTimingResponse = zod.object({
+  "readingDelaySeconds": zod.number(),
+  "baseResponseDelaySeconds": zod.number(),
+  "typingShortMessageSeconds": zod.number(),
+  "typingMediumMessageSeconds": zod.number(),
+  "typingLongMessageSeconds": zod.number(),
+  "totalEstimatedSeconds": zod.number(),
+  "nightModeWouldApply": zod.boolean(),
+  "effectiveMaxDelay": zod.number()
+})
+
+
+/**
+ * @summary Get real-time activity status for an account
+ */
+export const GetAccountActivityStatusParams = zod.object({
+  "accountId": zod.coerce.number()
+})
+
+export const GetAccountActivityStatusResponse = zod.object({
+  "state": zod.enum(['active', 'idle', 'away', 'sleep']),
+  "inActivePeriod": zod.boolean(),
+  "onBreak": zod.boolean(),
+  "breakRemainingSeconds": zod.number(),
+  "sessionActiveMinutes": zod.number(),
+  "lastActivitySecondsAgo": zod.number()
+})
+
+
 export const ListNotificationsResponseItem = zod.object({
   "id": zod.number(),
   "type": zod.enum(['info', 'warning', 'error', 'success', 'security', 'ai']),

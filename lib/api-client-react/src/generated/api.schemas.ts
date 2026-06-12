@@ -588,6 +588,142 @@ export interface Notification {
   createdAt: string;
 }
 
+export type DelayConfigTypingSpeed = typeof DelayConfigTypingSpeed[keyof typeof DelayConfigTypingSpeed];
+
+
+export const DelayConfigTypingSpeed = {
+  slow: 'slow',
+  human: 'human',
+  fast: 'fast',
+  variable: 'variable',
+} as const;
+
+export interface DelayConfig {
+  id: number;
+  /** @nullable */
+  accountId?: number | null;
+  /** @nullable */
+  groupId?: number | null;
+  name: string;
+  isGlobal: boolean;
+  minReplyDelay: number;
+  maxReplyDelay: number;
+  typingEnabled: boolean;
+  typingSpeed: DelayConfigTypingSpeed;
+  onlineSimulation: boolean;
+  nightSlowMode: boolean;
+  randomBreaks: boolean;
+  readingSimulation: boolean;
+  readingSpeedWpm: number;
+  priorityUsers?: string;
+  priorityMultiplier: number;
+  nightMultiplier: number;
+  nightStartHour: number;
+  nightEndHour: number;
+  breakProbability: number;
+  breakMinDuration: number;
+  breakMaxDuration: number;
+  activeHoursStart: number;
+  activeHoursEnd: number;
+  contextAdaptation: boolean;
+  activePeriods?: string;
+  cooldownMinutes: number;
+  maxContinuousActiveMinutes: number;
+  createdAt: string;
+}
+
+export type DelayConfigInputTypingSpeed = typeof DelayConfigInputTypingSpeed[keyof typeof DelayConfigInputTypingSpeed];
+
+
+export const DelayConfigInputTypingSpeed = {
+  slow: 'slow',
+  human: 'human',
+  fast: 'fast',
+  variable: 'variable',
+} as const;
+
+export interface DelayConfigInput {
+  name?: string;
+  accountId?: number;
+  groupId?: number;
+  isGlobal?: boolean;
+  minReplyDelay?: number;
+  maxReplyDelay?: number;
+  typingEnabled?: boolean;
+  typingSpeed?: DelayConfigInputTypingSpeed;
+  onlineSimulation?: boolean;
+  nightSlowMode?: boolean;
+  randomBreaks?: boolean;
+  readingSimulation?: boolean;
+  readingSpeedWpm?: number;
+  priorityUsers?: string;
+  priorityMultiplier?: number;
+  nightMultiplier?: number;
+  nightStartHour?: number;
+  nightEndHour?: number;
+  breakProbability?: number;
+  breakMinDuration?: number;
+  breakMaxDuration?: number;
+  activeHoursStart?: number;
+  activeHoursEnd?: number;
+  contextAdaptation?: boolean;
+  activePeriods?: string;
+  cooldownMinutes?: number;
+  maxContinuousActiveMinutes?: number;
+}
+
+export type DelayPreviewInputTypingSpeed = typeof DelayPreviewInputTypingSpeed[keyof typeof DelayPreviewInputTypingSpeed];
+
+
+export const DelayPreviewInputTypingSpeed = {
+  slow: 'slow',
+  human: 'human',
+  fast: 'fast',
+  variable: 'variable',
+} as const;
+
+export interface DelayPreviewInput {
+  minReplyDelay: number;
+  maxReplyDelay: number;
+  typingSpeed?: DelayPreviewInputTypingSpeed;
+  nightSlowMode?: boolean;
+  readingSimulation?: boolean;
+  readingSpeedWpm?: number;
+  nightMultiplier?: number;
+  contextAdaptation?: boolean;
+  sampleMessage?: string;
+}
+
+export interface DelayPreviewResult {
+  readingDelaySeconds: number;
+  baseResponseDelaySeconds: number;
+  typingShortMessageSeconds: number;
+  typingMediumMessageSeconds: number;
+  typingLongMessageSeconds: number;
+  totalEstimatedSeconds: number;
+  nightModeWouldApply: boolean;
+  effectiveMaxDelay: number;
+}
+
+export type ActivityStatusState = typeof ActivityStatusState[keyof typeof ActivityStatusState];
+
+
+export const ActivityStatusState = {
+  active: 'active',
+  idle: 'idle',
+  away: 'away',
+  sleep: 'sleep',
+} as const;
+
+export interface ActivityStatus {
+  state: ActivityStatusState;
+  inActivePeriod: boolean;
+  onBreak: boolean;
+  breakRemainingSeconds: number;
+  sessionActiveMinutes: number;
+  lastActivitySecondsAgo: number;
+}
+
 export type ListMessagesParams = {
 accountId?: number;
 groupId?: number;

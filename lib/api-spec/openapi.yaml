@@ -29,6 +29,8 @@ tags:
     description: Analytics and statistics
   - name: notifications
     description: Notifications management
+  - name: delay
+    description: Human delay engine configuration
 
 paths:
   /healthz:
@@ -831,6 +833,141 @@ paths:
                 items:
                   $ref: "#/components/schemas/EngagementStat"
 
+  # ── DELAY CONFIG ──────────────────────────────────────
+  /delay-config:
+    get:
+      operationId: listDelayConfigs
+      tags: [delay]
+      summary: List all delay configurations
+      responses:
+        "200":
+          description: List of delay configs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DelayConfig"
+    post:
+      operationId: createDelayConfig
+      tags: [delay]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DelayConfigInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DelayConfig"
+
+  /delay-config/global:
+    get:
+      operationId: getGlobalDelayConfig
+      tags: [delay]
+      summary: Get the global delay config
+      responses:
+        "200":
+          description: Global delay config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DelayConfig"
+
+  /delay-config/{id}:
+    get:
+      operationId: getDelayConfig
+      tags: [delay]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Delay config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DelayConfig"
+    patch:
+      operationId: updateDelayConfig
+      tags: [delay]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DelayConfigInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DelayConfig"
+    delete:
+      operationId: deleteDelayConfig
+      tags: [delay]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /delay-config/preview:
+    post:
+      operationId: previewDelayTiming
+      tags: [delay]
+      summary: Preview timing values without sleeping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DelayPreviewInput"
+      responses:
+        "200":
+          description: Preview timing result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DelayPreviewResult"
+
+  /delay-config/activity/{accountId}:
+    get:
+      operationId: getAccountActivityStatus
+      tags: [delay]
+      summary: Get real-time activity status for an account
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Activity status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityStatus"
+
   # ── NOTIFICATIONS ─────────────────────────────────────
   /notifications:
     get:
@@ -1552,3 +1689,190 @@ components:
           type: ["integer", "null"]
         createdAt:
           type: string
+
+    # ── DELAY CONFIG ──────────────────────────────────────
+    DelayConfig:
+      type: object
+      required: [id, name, isGlobal, minReplyDelay, maxReplyDelay, typingEnabled, typingSpeed, onlineSimulation, nightSlowMode, randomBreaks, readingSimulation, readingSpeedWpm, priorityMultiplier, nightMultiplier, nightStartHour, nightEndHour, breakProbability, breakMinDuration, breakMaxDuration, activeHoursStart, activeHoursEnd, contextAdaptation, cooldownMinutes, maxContinuousActiveMinutes, createdAt]
+      properties:
+        id:
+          type: integer
+        accountId:
+          type: ["integer", "null"]
+        groupId:
+          type: ["integer", "null"]
+        name:
+          type: string
+        isGlobal:
+          type: boolean
+        minReplyDelay:
+          type: number
+        maxReplyDelay:
+          type: number
+        typingEnabled:
+          type: boolean
+        typingSpeed:
+          type: string
+          enum: [slow, human, fast, variable]
+        onlineSimulation:
+          type: boolean
+        nightSlowMode:
+          type: boolean
+        randomBreaks:
+          type: boolean
+        readingSimulation:
+          type: boolean
+        readingSpeedWpm:
+          type: integer
+        priorityUsers:
+          type: string
+        priorityMultiplier:
+          type: number
+        nightMultiplier:
+          type: number
+        nightStartHour:
+          type: integer
+        nightEndHour:
+          type: integer
+        breakProbability:
+          type: number
+        breakMinDuration:
+          type: number
+        breakMaxDuration:
+          type: number
+        activeHoursStart:
+          type: integer
+        activeHoursEnd:
+          type: integer
+        contextAdaptation:
+          type: boolean
+        activePeriods:
+          type: string
+        cooldownMinutes:
+          type: number
+        maxContinuousActiveMinutes:
+          type: number
+        createdAt:
+          type: string
+
+    DelayConfigInput:
+      type: object
+      properties:
+        name:
+          type: string
+        accountId:
+          type: integer
+        groupId:
+          type: integer
+        isGlobal:
+          type: boolean
+        minReplyDelay:
+          type: number
+        maxReplyDelay:
+          type: number
+        typingEnabled:
+          type: boolean
+        typingSpeed:
+          type: string
+          enum: [slow, human, fast, variable]
+        onlineSimulation:
+          type: boolean
+        nightSlowMode:
+          type: boolean
+        randomBreaks:
+          type: boolean
+        readingSimulation:
+          type: boolean
+        readingSpeedWpm:
+          type: integer
+        priorityUsers:
+          type: string
+        priorityMultiplier:
+          type: number
+        nightMultiplier:
+          type: number
+        nightStartHour:
+          type: integer
+        nightEndHour:
+          type: integer
+        breakProbability:
+          type: number
+        breakMinDuration:
+          type: number
+        breakMaxDuration:
+          type: number
+        activeHoursStart:
+          type: integer
+        activeHoursEnd:
+          type: integer
+        contextAdaptation:
+          type: boolean
+        activePeriods:
+          type: string
+        cooldownMinutes:
+          type: number
+        maxContinuousActiveMinutes:
+          type: number
+
+    DelayPreviewInput:
+      type: object
+      required: [minReplyDelay, maxReplyDelay]
+      properties:
+        minReplyDelay:
+          type: number
+        maxReplyDelay:
+          type: number
+        typingSpeed:
+          type: string
+          enum: [slow, human, fast, variable]
+        nightSlowMode:
+          type: boolean
+        readingSimulation:
+          type: boolean
+        readingSpeedWpm:
+          type: integer
+        nightMultiplier:
+          type: number
+        contextAdaptation:
+          type: boolean
+        sampleMessage:
+          type: string
+
+    DelayPreviewResult:
+      type: object
+      required: [readingDelaySeconds, baseResponseDelaySeconds, typingShortMessageSeconds, typingMediumMessageSeconds, typingLongMessageSeconds, totalEstimatedSeconds, nightModeWouldApply, effectiveMaxDelay]
+      properties:
+        readingDelaySeconds:
+          type: number
+        baseResponseDelaySeconds:
+          type: number
+        typingShortMessageSeconds:
+          type: number
+        typingMediumMessageSeconds:
+          type: number
+        typingLongMessageSeconds:
+          type: number
+        totalEstimatedSeconds:
+          type: number
+        nightModeWouldApply:
+          type: boolean
+        effectiveMaxDelay:
+          type: number
+
+    ActivityStatus:
+      type: object
+      required: [state, inActivePeriod, onBreak, breakRemainingSeconds, sessionActiveMinutes, lastActivitySecondsAgo]
+      properties:
+        state:
+          type: string
+          enum: [active, idle, away, sleep]
+        inActivePeriod:
+          type: boolean
+        onBreak:
+          type: boolean
+        breakRemainingSeconds:
+          type: number
+        sessionActiveMinutes:
+          type: number
+        lastActivitySecondsAgo:
+          type: number

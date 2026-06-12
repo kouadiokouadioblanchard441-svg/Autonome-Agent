@@ -30,10 +30,15 @@ import type {
   AccountConnectResult,
   AccountsStats,
   ActivityDataPoint,
+  ActivityStatus,
   Campaign,
   CampaignInput,
   CampaignUpdate,
   DashboardStats,
+  DelayConfig,
+  DelayConfigInput,
+  DelayPreviewInput,
+  DelayPreviewResult,
   EngagementStat,
   HealthStatus,
   ListMessagesParams,
@@ -3398,6 +3403,574 @@ export function useGetEngagementStats<TData = Awaited<ReturnType<typeof getEngag
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetEngagementStatsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListDelayConfigsUrl = () => {
+
+
+
+
+  return `/api/delay-config`
+}
+
+/**
+ * @summary List all delay configurations
+ */
+export const listDelayConfigs = async ( options?: RequestInit): Promise<DelayConfig[]> => {
+
+  return customFetch<DelayConfig[]>(getListDelayConfigsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDelayConfigsQueryKey = () => {
+    return [
+    `/api/delay-config`
+    ] as const;
+    }
+
+
+export const getListDelayConfigsQueryOptions = <TData = Awaited<ReturnType<typeof listDelayConfigs>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDelayConfigs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDelayConfigsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDelayConfigs>>> = ({ signal }) => listDelayConfigs({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDelayConfigs>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDelayConfigsQueryResult = NonNullable<Awaited<ReturnType<typeof listDelayConfigs>>>
+export type ListDelayConfigsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all delay configurations
+ */
+
+export function useListDelayConfigs<TData = Awaited<ReturnType<typeof listDelayConfigs>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDelayConfigs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDelayConfigsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateDelayConfigUrl = () => {
+
+
+
+
+  return `/api/delay-config`
+}
+
+export const createDelayConfig = async (delayConfigInput: DelayConfigInput, options?: RequestInit): Promise<DelayConfig> => {
+
+  return customFetch<DelayConfig>(getCreateDelayConfigUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      delayConfigInput,)
+  }
+);}
+
+
+
+
+export const getCreateDelayConfigMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDelayConfig>>, TError,{data: BodyType<DelayConfigInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createDelayConfig>>, TError,{data: BodyType<DelayConfigInput>}, TContext> => {
+
+const mutationKey = ['createDelayConfig'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createDelayConfig>>, {data: BodyType<DelayConfigInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createDelayConfig(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateDelayConfigMutationResult = NonNullable<Awaited<ReturnType<typeof createDelayConfig>>>
+    export type CreateDelayConfigMutationBody = BodyType<DelayConfigInput>
+    export type CreateDelayConfigMutationError = ErrorType<unknown>
+
+    export const useCreateDelayConfig = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDelayConfig>>, TError,{data: BodyType<DelayConfigInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createDelayConfig>>,
+        TError,
+        {data: BodyType<DelayConfigInput>},
+        TContext
+      > => {
+      return useMutation(getCreateDelayConfigMutationOptions(options));
+    }
+
+export const getGetGlobalDelayConfigUrl = () => {
+
+
+
+
+  return `/api/delay-config/global`
+}
+
+/**
+ * @summary Get the global delay config
+ */
+export const getGlobalDelayConfig = async ( options?: RequestInit): Promise<DelayConfig> => {
+
+  return customFetch<DelayConfig>(getGetGlobalDelayConfigUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGlobalDelayConfigQueryKey = () => {
+    return [
+    `/api/delay-config/global`
+    ] as const;
+    }
+
+
+export const getGetGlobalDelayConfigQueryOptions = <TData = Awaited<ReturnType<typeof getGlobalDelayConfig>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGlobalDelayConfig>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGlobalDelayConfigQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGlobalDelayConfig>>> = ({ signal }) => getGlobalDelayConfig({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGlobalDelayConfig>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGlobalDelayConfigQueryResult = NonNullable<Awaited<ReturnType<typeof getGlobalDelayConfig>>>
+export type GetGlobalDelayConfigQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the global delay config
+ */
+
+export function useGetGlobalDelayConfig<TData = Awaited<ReturnType<typeof getGlobalDelayConfig>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGlobalDelayConfig>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGlobalDelayConfigQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetDelayConfigUrl = (id: number,) => {
+
+
+
+
+  return `/api/delay-config/${id}`
+}
+
+export const getDelayConfig = async (id: number, options?: RequestInit): Promise<DelayConfig> => {
+
+  return customFetch<DelayConfig>(getGetDelayConfigUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDelayConfigQueryKey = (id: number,) => {
+    return [
+    `/api/delay-config/${id}`
+    ] as const;
+    }
+
+
+export const getGetDelayConfigQueryOptions = <TData = Awaited<ReturnType<typeof getDelayConfig>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDelayConfig>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDelayConfigQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDelayConfig>>> = ({ signal }) => getDelayConfig(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDelayConfig>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDelayConfigQueryResult = NonNullable<Awaited<ReturnType<typeof getDelayConfig>>>
+export type GetDelayConfigQueryError = ErrorType<unknown>
+
+
+
+export function useGetDelayConfig<TData = Awaited<ReturnType<typeof getDelayConfig>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDelayConfig>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDelayConfigQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdateDelayConfigUrl = (id: number,) => {
+
+
+
+
+  return `/api/delay-config/${id}`
+}
+
+export const updateDelayConfig = async (id: number,
+    delayConfigInput: DelayConfigInput, options?: RequestInit): Promise<DelayConfig> => {
+
+  return customFetch<DelayConfig>(getUpdateDelayConfigUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      delayConfigInput,)
+  }
+);}
+
+
+
+
+export const getUpdateDelayConfigMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDelayConfig>>, TError,{id: number;data: BodyType<DelayConfigInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateDelayConfig>>, TError,{id: number;data: BodyType<DelayConfigInput>}, TContext> => {
+
+const mutationKey = ['updateDelayConfig'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateDelayConfig>>, {id: number;data: BodyType<DelayConfigInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateDelayConfig(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateDelayConfigMutationResult = NonNullable<Awaited<ReturnType<typeof updateDelayConfig>>>
+    export type UpdateDelayConfigMutationBody = BodyType<DelayConfigInput>
+    export type UpdateDelayConfigMutationError = ErrorType<unknown>
+
+    export const useUpdateDelayConfig = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDelayConfig>>, TError,{id: number;data: BodyType<DelayConfigInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateDelayConfig>>,
+        TError,
+        {id: number;data: BodyType<DelayConfigInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateDelayConfigMutationOptions(options));
+    }
+
+export const getDeleteDelayConfigUrl = (id: number,) => {
+
+
+
+
+  return `/api/delay-config/${id}`
+}
+
+export const deleteDelayConfig = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteDelayConfigUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteDelayConfigMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDelayConfig>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteDelayConfig>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteDelayConfig'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteDelayConfig>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteDelayConfig(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteDelayConfigMutationResult = NonNullable<Awaited<ReturnType<typeof deleteDelayConfig>>>
+
+    export type DeleteDelayConfigMutationError = ErrorType<unknown>
+
+    export const useDeleteDelayConfig = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDelayConfig>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteDelayConfig>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteDelayConfigMutationOptions(options));
+    }
+
+export const getPreviewDelayTimingUrl = () => {
+
+
+
+
+  return `/api/delay-config/preview`
+}
+
+/**
+ * @summary Preview timing values without sleeping
+ */
+export const previewDelayTiming = async (delayPreviewInput: DelayPreviewInput, options?: RequestInit): Promise<DelayPreviewResult> => {
+
+  return customFetch<DelayPreviewResult>(getPreviewDelayTimingUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      delayPreviewInput,)
+  }
+);}
+
+
+
+
+export const getPreviewDelayTimingMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewDelayTiming>>, TError,{data: BodyType<DelayPreviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewDelayTiming>>, TError,{data: BodyType<DelayPreviewInput>}, TContext> => {
+
+const mutationKey = ['previewDelayTiming'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewDelayTiming>>, {data: BodyType<DelayPreviewInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewDelayTiming(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewDelayTimingMutationResult = NonNullable<Awaited<ReturnType<typeof previewDelayTiming>>>
+    export type PreviewDelayTimingMutationBody = BodyType<DelayPreviewInput>
+    export type PreviewDelayTimingMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Preview timing values without sleeping
+ */
+export const usePreviewDelayTiming = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewDelayTiming>>, TError,{data: BodyType<DelayPreviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewDelayTiming>>,
+        TError,
+        {data: BodyType<DelayPreviewInput>},
+        TContext
+      > => {
+      return useMutation(getPreviewDelayTimingMutationOptions(options));
+    }
+
+export const getGetAccountActivityStatusUrl = (accountId: number,) => {
+
+
+
+
+  return `/api/delay-config/activity/${accountId}`
+}
+
+/**
+ * @summary Get real-time activity status for an account
+ */
+export const getAccountActivityStatus = async (accountId: number, options?: RequestInit): Promise<ActivityStatus> => {
+
+  return customFetch<ActivityStatus>(getGetAccountActivityStatusUrl(accountId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAccountActivityStatusQueryKey = (accountId: number,) => {
+    return [
+    `/api/delay-config/activity/${accountId}`
+    ] as const;
+    }
+
+
+export const getGetAccountActivityStatusQueryOptions = <TData = Awaited<ReturnType<typeof getAccountActivityStatus>>, TError = ErrorType<unknown>>(accountId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAccountActivityStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAccountActivityStatusQueryKey(accountId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAccountActivityStatus>>> = ({ signal }) => getAccountActivityStatus(accountId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(accountId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAccountActivityStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAccountActivityStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getAccountActivityStatus>>>
+export type GetAccountActivityStatusQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get real-time activity status for an account
+ */
+
+export function useGetAccountActivityStatus<TData = Awaited<ReturnType<typeof getAccountActivityStatus>>, TError = ErrorType<unknown>>(
+ accountId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAccountActivityStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAccountActivityStatusQueryOptions(accountId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

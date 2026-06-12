@@ -11,7 +11,8 @@ import {
   BarChart3,
   Bell,
   MessageCircle,
-  Hash
+  Hash,
+  Timer,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { href: "/campaigns", label: "Campaigns", icon: Megaphone },
   { href: "/schedules", label: "Schedules", icon: CalendarClock },
   { href: "/ai", label: "AI Engine", icon: BrainCircuit },
+  { href: "/human-delay", label: "Human Delay", icon: Timer },
   { href: "/security", label: "Security", icon: ShieldAlert },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/notifications", label: "Notifications", icon: Bell },

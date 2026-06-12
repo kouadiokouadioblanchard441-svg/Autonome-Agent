@@ -13,6 +13,7 @@ import Messages from "@/pages/Messages";
 import Campaigns from "@/pages/Campaigns";
 import Schedules from "@/pages/Schedules";
 import AIEngine from "@/pages/AIEngine";
+import HumanDelay from "@/pages/HumanDelay";
 import Security from "@/pages/Security";
 import Analytics from "@/pages/Analytics";
 import Notifications from "@/pages/Notifications";
@@ -31,6 +32,7 @@ function Router() {
         <Route path="/campaigns" component={Campaigns} />
         <Route path="/schedules" component={Schedules} />
         <Route path="/ai" component={AIEngine} />
+        <Route path="/human-delay" component={HumanDelay} />
         <Route path="/security" component={Security} />
         <Route path="/analytics" component={Analytics} />
         <Route path="/notifications" component={Notifications} />
