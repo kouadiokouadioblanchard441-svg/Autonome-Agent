@@ -1,22 +1,41 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Telegram AI Autonomous System API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: accounts
+    description: Telegram account management
+  - name: groups
+    description: Telegram group management
+  - name: channels
+    description: Telegram channel management
+  - name: messages
+    description: Message management
+  - name: campaigns
+    description: Campaign management
+  - name: schedules
+    description: Schedule management
+  - name: ai
+    description: AI engine operations
+  - name: security
+    description: Security and moderation
+  - name: analytics
+    description: Analytics and statistics
+  - name: notifications
+    description: Notifications management
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +43,1512 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── ACCOUNTS ──────────────────────────────────────────
+  /accounts:
+    get:
+      operationId: listAccounts
+      tags: [accounts]
+      summary: List all Telegram accounts
+      responses:
+        "200":
+          description: List of accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TelegramAccount"
+    post:
+      operationId: createAccount
+      tags: [accounts]
+      summary: Add a new Telegram account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelegramAccountInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelegramAccount"
+
+  /accounts/{id}:
+    get:
+      operationId: getAccount
+      tags: [accounts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelegramAccount"
+    patch:
+      operationId: updateAccount
+      tags: [accounts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelegramAccountUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelegramAccount"
+    delete:
+      operationId: deleteAccount
+      tags: [accounts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /accounts/{id}/connect:
+    post:
+      operationId: connectAccount
+      tags: [accounts]
+      summary: Connect / authenticate a Telegram account
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountConnectInput"
+      responses:
+        "200":
+          description: Connection result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountConnectResult"
+
+  /accounts/{id}/disconnect:
+    post:
+      operationId: disconnectAccount
+      tags: [accounts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Disconnected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountConnectResult"
+
+  /accounts/stats:
+    get:
+      operationId: getAccountsStats
+      tags: [accounts]
+      summary: Aggregated account health stats
+      responses:
+        "200":
+          description: Account stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountsStats"
+
+  # ── GROUPS ────────────────────────────────────────────
+  /groups:
+    get:
+      operationId: listGroups
+      tags: [groups]
+      responses:
+        "200":
+          description: List of groups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TelegramGroup"
+    post:
+      operationId: createGroup
+      tags: [groups]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelegramGroupInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelegramGroup"
+
+  /groups/{id}:
+    get:
+      operationId: getGroup
+      tags: [groups]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Group
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelegramGroup"
+    patch:
+      operationId: updateGroup
+      tags: [groups]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelegramGroupUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelegramGroup"
+    delete:
+      operationId: deleteGroup
+      tags: [groups]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── CHANNELS ──────────────────────────────────────────
+  /channels:
+    get:
+      operationId: listChannels
+      tags: [channels]
+      responses:
+        "200":
+          description: List of channels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TelegramChannel"
+    post:
+      operationId: createChannel
+      tags: [channels]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelegramChannelInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelegramChannel"
+
+  /channels/{id}:
+    get:
+      operationId: getChannel
+      tags: [channels]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Channel
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelegramChannel"
+    patch:
+      operationId: updateChannel
+      tags: [channels]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelegramChannelUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelegramChannel"
+    delete:
+      operationId: deleteChannel
+      tags: [channels]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── MESSAGES ──────────────────────────────────────────
+  /messages:
+    get:
+      operationId: listMessages
+      tags: [messages]
+      parameters:
+        - name: accountId
+          in: query
+          schema:
+            type: integer
+        - name: groupId
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+    post:
+      operationId: sendMessage
+      tags: [messages]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageInput"
+      responses:
+        "201":
+          description: Sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /messages/recent:
+    get:
+      operationId: getRecentMessages
+      tags: [messages]
+      summary: Recent messages across all accounts
+      responses:
+        "200":
+          description: Recent messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+
+  # ── CAMPAIGNS ─────────────────────────────────────────
+  /campaigns:
+    get:
+      operationId: listCampaigns
+      tags: [campaigns]
+      responses:
+        "200":
+          description: List of campaigns
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Campaign"
+    post:
+      operationId: createCampaign
+      tags: [campaigns]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+
+  /campaigns/{id}:
+    get:
+      operationId: getCampaign
+      tags: [campaigns]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Campaign
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+    patch:
+      operationId: updateCampaign
+      tags: [campaigns]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+    delete:
+      operationId: deleteCampaign
+      tags: [campaigns]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /campaigns/{id}/start:
+    post:
+      operationId: startCampaign
+      tags: [campaigns]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Campaign started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+
+  /campaigns/{id}/stop:
+    post:
+      operationId: stopCampaign
+      tags: [campaigns]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Campaign stopped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+
+  # ── SCHEDULES ─────────────────────────────────────────
+  /schedules:
+    get:
+      operationId: listSchedules
+      tags: [schedules]
+      responses:
+        "200":
+          description: List of schedules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Schedule"
+    post:
+      operationId: createSchedule
+      tags: [schedules]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScheduleInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Schedule"
+
+  /schedules/{id}:
+    get:
+      operationId: getSchedule
+      tags: [schedules]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Schedule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Schedule"
+    patch:
+      operationId: updateSchedule
+      tags: [schedules]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScheduleUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Schedule"
+    delete:
+      operationId: deleteSchedule
+      tags: [schedules]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── AI ENGINE ─────────────────────────────────────────
+  /ai/generate:
+    post:
+      operationId: generateContent
+      tags: [ai]
+      summary: Generate AI content
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AIGenerateInput"
+      responses:
+        "200":
+          description: Generated content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIGenerateResult"
+
+  /ai/personalities:
+    get:
+      operationId: listPersonalities
+      tags: [ai]
+      summary: List AI personalities
+      responses:
+        "200":
+          description: Personalities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AIPersonality"
+    post:
+      operationId: createPersonality
+      tags: [ai]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AIPersonalityInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIPersonality"
+
+  /ai/personalities/{id}:
+    patch:
+      operationId: updatePersonality
+      tags: [ai]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AIPersonalityUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIPersonality"
+    delete:
+      operationId: deletePersonality
+      tags: [ai]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /ai/logs:
+    get:
+      operationId: listAILogs
+      tags: [ai]
+      summary: AI activity logs
+      responses:
+        "200":
+          description: AI logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AILog"
+
+  # ── SECURITY ──────────────────────────────────────────
+  /security/logs:
+    get:
+      operationId: listSecurityLogs
+      tags: [security]
+      summary: Security event logs
+      responses:
+        "200":
+          description: Security logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SecurityLog"
+
+  /security/sanctions:
+    get:
+      operationId: listSanctions
+      tags: [security]
+      responses:
+        "200":
+          description: Sanctions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Sanction"
+    post:
+      operationId: createSanction
+      tags: [security]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SanctionInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sanction"
+
+  /security/sanctions/{id}:
+    delete:
+      operationId: deleteSanction
+      tags: [security]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /security/stats:
+    get:
+      operationId: getSecurityStats
+      tags: [security]
+      summary: Security threat summary
+      responses:
+        "200":
+          description: Security stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SecurityStats"
+
+  # ── ANALYTICS ─────────────────────────────────────────
+  /analytics/dashboard:
+    get:
+      operationId: getDashboardStats
+      tags: [analytics]
+      summary: Main dashboard statistics
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /analytics/activity:
+    get:
+      operationId: getActivityTimeline
+      tags: [analytics]
+      summary: Activity timeline (last 7 days)
+      responses:
+        "200":
+          description: Activity data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityDataPoint"
+
+  /analytics/engagement:
+    get:
+      operationId: getEngagementStats
+      tags: [analytics]
+      summary: Engagement statistics per group/channel
+      responses:
+        "200":
+          description: Engagement stats
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EngagementStat"
+
+  # ── NOTIFICATIONS ─────────────────────────────────────
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+
+  /notifications/{id}/read:
+    patch:
+      operationId: markNotificationRead
+      tags: [notifications]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Marked read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    # ── ACCOUNT ──────────────────────────────────────────
+    TelegramAccount:
+      type: object
+      required: [id, phoneNumber, username, status, personalityId, isConnected, createdAt]
+      properties:
+        id:
+          type: integer
+        phoneNumber:
+          type: string
+        username:
+          type: ["string", "null"]
+        displayName:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [active, inactive, banned, pending, cooldown]
+        personalityId:
+          type: ["integer", "null"]
+        isConnected:
+          type: boolean
+        lastSeen:
+          type: ["string", "null"]
+        messagesCount:
+          type: integer
+        groupsCount:
+          type: integer
+        healthScore:
+          type: integer
+        timezone:
+          type: ["string", "null"]
+        activeHoursStart:
+          type: ["integer", "null"]
+        activeHoursEnd:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+
+    TelegramAccountInput:
+      type: object
+      required: [phoneNumber]
+      properties:
+        phoneNumber:
+          type: string
+        displayName:
+          type: string
+        personalityId:
+          type: integer
+        timezone:
+          type: string
+        activeHoursStart:
+          type: integer
+        activeHoursEnd:
+          type: integer
+
+    TelegramAccountUpdate:
+      type: object
+      properties:
+        displayName:
+          type: string
+        personalityId:
+          type: integer
+        status:
+          type: string
+        timezone:
+          type: string
+        activeHoursStart:
+          type: integer
+        activeHoursEnd:
+          type: integer
+
+    AccountConnectInput:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [request_code, verify_code, verify_2fa]
+        code:
+          type: string
+        password:
+          type: string
+
+    AccountConnectResult:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        needsCode:
+          type: boolean
+        needs2FA:
+          type: boolean
+
+    AccountsStats:
+      type: object
+      required: [total, active, connected, banned, cooldown, avgHealthScore]
+      properties:
+        total:
+          type: integer
+        active:
+          type: integer
+        connected:
+          type: integer
+        banned:
+          type: integer
+        cooldown:
+          type: integer
+        avgHealthScore:
+          type: integer
+
+    # ── GROUP ─────────────────────────────────────────────
+    TelegramGroup:
+      type: object
+      required: [id, telegramId, title, isMonitored, isAutoReply, createdAt]
+      properties:
+        id:
+          type: integer
+        telegramId:
+          type: string
+        title:
+          type: string
+        username:
+          type: ["string", "null"]
+        membersCount:
+          type: ["integer", "null"]
+        isMonitored:
+          type: boolean
+        isAutoReply:
+          type: boolean
+        isAutoModerate:
+          type: boolean
+        accountId:
+          type: ["integer", "null"]
+        messagesCount:
+          type: integer
+        createdAt:
+          type: string
+
+    TelegramGroupInput:
+      type: object
+      required: [telegramId, title]
+      properties:
+        telegramId:
+          type: string
+        title:
+          type: string
+        username:
+          type: string
+        accountId:
+          type: integer
+        isMonitored:
+          type: boolean
+        isAutoReply:
+          type: boolean
+        isAutoModerate:
+          type: boolean
+
+    TelegramGroupUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        isMonitored:
+          type: boolean
+        isAutoReply:
+          type: boolean
+        isAutoModerate:
+          type: boolean
+        accountId:
+          type: integer
+
+    # ── CHANNEL ──────────────────────────────────────────
+    TelegramChannel:
+      type: object
+      required: [id, telegramId, title, isAutoPost, createdAt]
+      properties:
+        id:
+          type: integer
+        telegramId:
+          type: string
+        title:
+          type: string
+        username:
+          type: ["string", "null"]
+        subscribersCount:
+          type: ["integer", "null"]
+        isAutoPost:
+          type: boolean
+        accountId:
+          type: ["integer", "null"]
+        postsCount:
+          type: integer
+        createdAt:
+          type: string
+
+    TelegramChannelInput:
+      type: object
+      required: [telegramId, title]
+      properties:
+        telegramId:
+          type: string
+        title:
+          type: string
+        username:
+          type: string
+        accountId:
+          type: integer
+        isAutoPost:
+          type: boolean
+
+    TelegramChannelUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        isAutoPost:
+          type: boolean
+        accountId:
+          type: integer
+
+    # ── MESSAGE ──────────────────────────────────────────
+    Message:
+      type: object
+      required: [id, content, direction, status, createdAt]
+      properties:
+        id:
+          type: integer
+        accountId:
+          type: ["integer", "null"]
+        groupId:
+          type: ["integer", "null"]
+        channelId:
+          type: ["integer", "null"]
+        content:
+          type: string
+        direction:
+          type: string
+          enum: [inbound, outbound]
+        status:
+          type: string
+          enum: [sent, delivered, failed, pending]
+        isAIGenerated:
+          type: boolean
+        senderUsername:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    MessageInput:
+      type: object
+      required: [content]
+      properties:
+        accountId:
+          type: integer
+        groupId:
+          type: integer
+        channelId:
+          type: integer
+        content:
+          type: string
+        useAI:
+          type: boolean
+        personalityId:
+          type: integer
+
+    # ── CAMPAIGN ─────────────────────────────────────────
+    Campaign:
+      type: object
+      required: [id, name, type, status, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        type:
+          type: string
+          enum: [motivation, crypto, marketing, announcement, support, custom]
+        status:
+          type: string
+          enum: [draft, active, paused, completed]
+        personalityId:
+          type: ["integer", "null"]
+        targetGroups:
+          type: array
+          items:
+            type: integer
+        targetChannels:
+          type: array
+          items:
+            type: integer
+        messagesSent:
+          type: integer
+        intervalHours:
+          type: ["integer", "null"]
+        startDate:
+          type: ["string", "null"]
+        endDate:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    CampaignInput:
+      type: object
+      required: [name, type]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+          enum: [motivation, crypto, marketing, announcement, support, custom]
+        personalityId:
+          type: integer
+        targetGroups:
+          type: array
+          items:
+            type: integer
+        targetChannels:
+          type: array
+          items:
+            type: integer
+        intervalHours:
+          type: integer
+        startDate:
+          type: string
+        endDate:
+          type: string
+
+    CampaignUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+        personalityId:
+          type: integer
+        intervalHours:
+          type: integer
+        startDate:
+          type: string
+        endDate:
+          type: string
+
+    # ── SCHEDULE ─────────────────────────────────────────
+    Schedule:
+      type: object
+      required: [id, name, cronExpression, isActive, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        campaignId:
+          type: ["integer", "null"]
+        cronExpression:
+          type: string
+        isActive:
+          type: boolean
+        lastRun:
+          type: ["string", "null"]
+        nextRun:
+          type: ["string", "null"]
+        runCount:
+          type: integer
+        createdAt:
+          type: string
+
+    ScheduleInput:
+      type: object
+      required: [name, cronExpression]
+      properties:
+        name:
+          type: string
+        campaignId:
+          type: integer
+        cronExpression:
+          type: string
+        isActive:
+          type: boolean
+
+    ScheduleUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        cronExpression:
+          type: string
+        isActive:
+          type: boolean
+        campaignId:
+          type: integer
+
+    # ── AI ────────────────────────────────────────────────
+    AIPersonality:
+      type: object
+      required: [id, name, type, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+          enum: [professional, business, crypto, motivational, friendly, community, support, casual]
+        description:
+          type: ["string", "null"]
+        tone:
+          type: string
+        emojiFrequency:
+          type: string
+          enum: [none, low, medium, high]
+        energyLevel:
+          type: integer
+        isDefault:
+          type: boolean
+        createdAt:
+          type: string
+
+    AIPersonalityInput:
+      type: object
+      required: [name, type]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [professional, business, crypto, motivational, friendly, community, support, casual]
+        description:
+          type: string
+        tone:
+          type: string
+        emojiFrequency:
+          type: string
+          enum: [none, low, medium, high]
+        energyLevel:
+          type: integer
+
+    AIPersonalityUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        tone:
+          type: string
+        emojiFrequency:
+          type: string
+        energyLevel:
+          type: integer
+        isDefault:
+          type: boolean
+
+    AIGenerateInput:
+      type: object
+      required: [prompt]
+      properties:
+        prompt:
+          type: string
+        personalityId:
+          type: integer
+        contentType:
+          type: string
+          enum: [motivation, announcement, marketing, welcome, reply, custom]
+        language:
+          type: string
+        context:
+          type: string
+
+    AIGenerateResult:
+      type: object
+      required: [content, model]
+      properties:
+        content:
+          type: string
+        model:
+          type: string
+        tokensUsed:
+          type: integer
+        personalityApplied:
+          type: ["string", "null"]
+
+    AILog:
+      type: object
+      required: [id, action, model, createdAt]
+      properties:
+        id:
+          type: integer
+        accountId:
+          type: ["integer", "null"]
+        action:
+          type: string
+        model:
+          type: string
+        prompt:
+          type: ["string", "null"]
+        response:
+          type: ["string", "null"]
+        tokensUsed:
+          type: ["integer", "null"]
+        success:
+          type: boolean
+        createdAt:
+          type: string
+
+    # ── SECURITY ─────────────────────────────────────────
+    SecurityLog:
+      type: object
+      required: [id, eventType, severity, createdAt]
+      properties:
+        id:
+          type: integer
+        eventType:
+          type: string
+          enum: [spam_detected, ban_issued, mute_issued, phishing, scam, bot_detected, floodwait, warning]
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+        targetUsername:
+          type: ["string", "null"]
+        groupId:
+          type: ["integer", "null"]
+        accountId:
+          type: ["integer", "null"]
+        description:
+          type: string
+        actionTaken:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    Sanction:
+      type: object
+      required: [id, type, targetUsername, reason, createdAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [ban, mute, warn, kick]
+        targetUsername:
+          type: string
+        targetUserId:
+          type: ["string", "null"]
+        groupId:
+          type: ["integer", "null"]
+        accountId:
+          type: ["integer", "null"]
+        reason:
+          type: string
+        expiresAt:
+          type: ["string", "null"]
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+
+    SanctionInput:
+      type: object
+      required: [type, targetUsername, reason]
+      properties:
+        type:
+          type: string
+          enum: [ban, mute, warn, kick]
+        targetUsername:
+          type: string
+        targetUserId:
+          type: string
+        groupId:
+          type: integer
+        accountId:
+          type: integer
+        reason:
+          type: string
+        expiresAt:
+          type: string
+
+    SecurityStats:
+      type: object
+      required: [threatsDetected, spamBlocked, usersWarned, usersBanned, usersMuted]
+      properties:
+        threatsDetected:
+          type: integer
+        spamBlocked:
+          type: integer
+        usersWarned:
+          type: integer
+        usersBanned:
+          type: integer
+        usersMuted:
+          type: integer
+        phishingBlocked:
+          type: integer
+        scamsDetected:
+          type: integer
+
+    # ── ANALYTICS ────────────────────────────────────────
+    DashboardStats:
+      type: object
+      required: [totalAccounts, activeAccounts, totalGroups, totalChannels, messagesToday, aiMessagesToday, campaignsActive, threatsToday]
+      properties:
+        totalAccounts:
+          type: integer
+        activeAccounts:
+          type: integer
+        totalGroups:
+          type: integer
+        totalChannels:
+          type: integer
+        messagesToday:
+          type: integer
+        aiMessagesToday:
+          type: integer
+        campaignsActive:
+          type: integer
+        threatsToday:
+          type: integer
+        totalMessagesSent:
+          type: integer
+        uptime:
+          type: string
+
+    ActivityDataPoint:
+      type: object
+      required: [date, messages, aiMessages, threats]
+      properties:
+        date:
+          type: string
+        messages:
+          type: integer
+        aiMessages:
+          type: integer
+        threats:
+          type: integer
+
+    EngagementStat:
+      type: object
+      required: [name, type, messages, engagement]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [group, channel]
+        messages:
+          type: integer
+        engagement:
+          type: integer
+        membersCount:
+          type: ["integer", "null"]
+
+    # ── NOTIFICATIONS ─────────────────────────────────────
+    Notification:
+      type: object
+      required: [id, type, title, message, isRead, createdAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [info, warning, error, success, security, ai]
+        title:
+          type: string
+        message:
+          type: string
+        isRead:
+          type: boolean
+        accountId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
