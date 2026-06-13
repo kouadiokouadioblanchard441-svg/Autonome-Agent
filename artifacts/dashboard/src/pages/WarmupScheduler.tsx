@@ -57,7 +57,7 @@ export default function WarmupScheduler() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3"><Flame className="w-7 h-7 text-orange-400" /> Warm-Up Scheduler</h1>
+          <h1 className="text-xl sm:text-3xl font-bold flex items-center gap-3"><Flame className="w-7 h-7 text-orange-400" /> Warm-Up Scheduler</h1>
           <p className="text-muted-foreground mt-1">Augmentation progressive de l'activité pour les nouveaux comptes — évite les bans instantanés</p>
         </div>
         <Button onClick={() => setOpen(true)}><Plus className="w-4 h-4 mr-2" />Nouveau plan</Button>

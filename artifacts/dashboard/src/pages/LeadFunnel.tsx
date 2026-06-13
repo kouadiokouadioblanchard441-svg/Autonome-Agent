@@ -56,7 +56,7 @@ export default function LeadFunnel() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3"><Target className="w-7 h-7 text-emerald-400" />Lead Funnel</h1>
+          <h1 className="text-xl sm:text-3xl font-bold flex items-center gap-3"><Target className="w-7 h-7 text-emerald-400" />Lead Funnel</h1>
           <p className="text-muted-foreground mt-1">Pipeline Kanban · Suivi des contacts de Froid → Converti</p>
         </div>
         <Button onClick={() => setOpen(true)}><Plus className="w-4 h-4 mr-2" />Nouveau lead</Button>

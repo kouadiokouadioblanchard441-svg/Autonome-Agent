@@ -67,16 +67,16 @@ export default function ProxyManager() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3"><Shield className="w-7 h-7 text-cyan-400" /> Proxy & IP Manager</h1>
-          <p className="text-muted-foreground mt-1">Assigne un proxy SOCKS5 dédié par compte — Telegram détecte les IPs partagées</p>
+          <h1 className="text-xl sm:text-3xl font-bold flex items-center gap-3"><Shield className="w-6 h-6 sm:w-7 sm:h-7 text-cyan-400" /> Proxy & IP Manager</h1>
+          <p className="text-muted-foreground mt-1 text-sm">Assigne un proxy SOCKS5 dédié par compte</p>
         </div>
-        <Button onClick={() => setOpen(true)}><Plus className="w-4 h-4 mr-2" />Ajouter proxy</Button>
+        <Button onClick={() => setOpen(true)} className="w-full sm:w-auto"><Plus className="w-4 h-4 mr-2" />Ajouter proxy</Button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "Total", value: proxies.length, icon: Globe, color: "text-primary" },
           { label: "Opérationnels", value: active, icon: Wifi, color: "text-emerald-400" },

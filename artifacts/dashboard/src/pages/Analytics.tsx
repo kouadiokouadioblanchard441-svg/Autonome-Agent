@@ -7,8 +7,8 @@ export default function Analytics() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Analytics & Engagement</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Analytics & Engagement</h1>
       </div>
 
       <Card className="bg-card/50 border-border/50">

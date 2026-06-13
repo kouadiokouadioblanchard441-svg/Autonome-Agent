@@ -46,8 +46,8 @@ export default function FloodTracker() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold flex items-center gap-3"><Zap className="w-7 h-7 text-yellow-400" /> FloodWait Tracker</h1>
-        <p className="text-muted-foreground mt-1">Prédit les FloodWait avant qu'ils arrivent · Protège la santé des comptes</p>
+        <h1 className="text-xl sm:text-3xl font-bold flex items-center gap-3"><Zap className="w-6 h-6 sm:w-7 sm:h-7 text-yellow-400" /> FloodWait Tracker</h1>
+        <p className="text-muted-foreground mt-1 text-sm">Prédit les FloodWait avant qu'ils arrivent · Protège la santé des comptes</p>
       </div>
 
       {/* Stats row */}

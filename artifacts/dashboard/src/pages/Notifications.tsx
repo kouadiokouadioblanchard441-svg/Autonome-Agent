@@ -18,7 +18,7 @@ export default function Notifications() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">System Alerts</h1>
+        <h1 className="text-xl sm:text-3xl font-bold tracking-tight">System Alerts</h1>
       </div>
 
       <Card className="bg-card/50 border-border/50">

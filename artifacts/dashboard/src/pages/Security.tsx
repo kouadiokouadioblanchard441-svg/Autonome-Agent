@@ -12,7 +12,7 @@ export default function Security() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+        <h1 className="text-xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
           <ShieldAlert className="w-8 h-8 text-destructive" />
           Security Matrix
         </h1>

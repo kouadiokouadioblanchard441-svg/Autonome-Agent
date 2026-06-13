@@ -95,12 +95,12 @@ export default function ClientsManager() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3"><Users className="w-7 h-7 text-primary" />Gestion des Clients</h1>
-          <p className="text-muted-foreground mt-1">Crée et gère les accès portail pour chaque client — ils voient uniquement leur bot</p>
+          <h1 className="text-xl sm:text-3xl font-bold flex items-center gap-3"><Users className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />Gestion des Clients</h1>
+          <p className="text-muted-foreground mt-1 text-sm">Crée et gère les accès portail pour chaque client</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="gap-2"><Plus className="w-4 h-4" />Nouveau client</Button>
+        <Button onClick={() => setCreateOpen(true)} className="gap-2 w-full sm:w-auto"><Plus className="w-4 h-4" />Nouveau client</Button>
       </div>
 
       {/* Info banner */}

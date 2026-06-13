@@ -11,7 +11,7 @@ export default function Messages() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Signal Intelligence</h1>
+        <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Signal Intelligence</h1>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

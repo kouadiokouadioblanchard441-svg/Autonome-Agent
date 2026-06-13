@@ -8,8 +8,8 @@ export default function Channels() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Controlled Channels</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Controlled Channels</h1>
       </div>
 
       <Card className="bg-card/50 border-border/50">
@@ -17,8 +17,8 @@ export default function Channels() {
           <CardTitle>Broadcast Matrix</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border border-border/50">
-            <Table>
+          <div className="rounded-md border border-border/50 overflow-x-auto">
+            <Table className="min-w-[500px]">
               <TableHeader>
                 <TableRow className="border-border/50 hover:bg-transparent">
                   <TableHead>Channel</TableHead>

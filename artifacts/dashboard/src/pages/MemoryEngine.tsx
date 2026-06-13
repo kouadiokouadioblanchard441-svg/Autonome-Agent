@@ -56,14 +56,14 @@ export default function MemoryEngine() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3"><Brain className="w-7 h-7 text-violet-400" />Memory Engine</h1>
+          <h1 className="text-xl sm:text-3xl font-bold flex items-center gap-3"><Brain className="w-7 h-7 text-violet-400" />Memory Engine</h1>
           <p className="text-muted-foreground mt-1">Mémoire par contact — l'AI répond en cohérence avec les échanges passés</p>
         </div>
         <Button onClick={() => setOpen(true)}><Plus className="w-4 h-4 mr-2" />Nouveau contact</Button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "Total contacts", value: memories.length, icon: Brain, color: "text-violet-400" },
           { label: "🔥 Chauds", value: hot, icon: Thermometer, color: "text-red-400" },

@@ -46,12 +46,12 @@ export default function AutoJoin() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3"><Search className="w-7 h-7 text-teal-400" />Auto-Join Groups</h1>
-          <p className="text-muted-foreground mt-1">Rejoindre automatiquement des groupes cibles par mots-clés · 1–3/jour pour éviter les bans</p>
+          <h1 className="text-xl sm:text-3xl font-bold flex items-center gap-3"><Search className="w-6 h-6 sm:w-7 sm:h-7 text-teal-400" />Auto-Join Groups</h1>
+          <p className="text-muted-foreground mt-1 text-sm">Rejoindre automatiquement des groupes cibles par mots-clés</p>
         </div>
-        <Button onClick={() => setOpen(true)}><Plus className="w-4 h-4 mr-2" />Nouvelle cible</Button>
+        <Button onClick={() => setOpen(true)} className="w-full sm:w-auto"><Plus className="w-4 h-4 mr-2" />Nouvelle cible</Button>
       </div>
 
       {/* Info */}

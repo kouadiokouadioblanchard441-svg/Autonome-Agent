@@ -10,9 +10,9 @@ export default function AIEngine() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <BrainCircuit className="w-8 h-8 text-accent" />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
+          <BrainCircuit className="w-6 h-6 sm:w-8 sm:h-8 text-accent" />
           Neural Engine
         </h1>
       </div>

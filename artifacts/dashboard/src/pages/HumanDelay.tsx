@@ -170,7 +170,7 @@ export default function HumanDelay() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Human Delay Engine</h1>
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Human Delay Engine</h1>
           <p className="text-muted-foreground mt-1">
             Configure realistic human interaction timing for all AI accounts
           </p>

@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, MessageSquare, Megaphone, CalendarClock,
   BrainCircuit, ShieldAlert, BarChart3, Bell, MessageCircle, Hash,
   Timer, KeyRound, Flame, Shield, Zap, Brain, Target, FlaskConical,
-  Search, AlertTriangle, LogOut, UserCog,
+  Search, AlertTriangle, LogOut, UserCog, X,
 } from "lucide-react";
 import nexusLogo from "@/assets/nexus-logo.svg";
 
@@ -59,21 +59,33 @@ const NAV_GROUPS = [
   },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
 
-  return (
-    <div className="w-64 border-r border-border bg-card flex flex-col h-full sticky top-0">
+  const sidebarContent = (
+    <div className="w-64 border-r border-border bg-card flex flex-col h-full">
       {/* Logo */}
       <div className="h-16 flex items-center px-5 border-b border-border shrink-0 gap-3">
         <img src={nexusLogo} alt="Nexus AI" className="w-8 h-8 shrink-0" />
-        <div>
+        <div className="flex-1">
           <span className="font-black text-base tracking-widest uppercase text-white">
             NEXUS<span className="text-cyan-400"> AI</span>
           </span>
           <p className="text-[9px] text-cyan-400/50 font-mono tracking-[0.2em] uppercase -mt-0.5">Admin Panel</p>
         </div>
+        {/* Mobile close button */}
+        <button
+          onClick={onClose}
+          className="md:hidden text-muted-foreground hover:text-foreground p-1 rounded transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Nav */}
@@ -90,10 +102,10 @@ export function Sidebar() {
                   location === item.href ||
                   (item.href !== "/" && location.startsWith(item.href));
                 return (
-                  <Link key={item.href} href={item.href} className="block">
+                  <Link key={item.href} href={item.href} className="block" onClick={onClose}>
                     <div
                       className={cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer",
+                        "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors cursor-pointer",
                         isActive
                           ? "bg-primary/10 text-primary"
                           : "text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -136,5 +148,29 @@ export function Sidebar() {
         </div>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {/* Desktop: always visible static sidebar */}
+      <div className="hidden md:flex h-full sticky top-0">
+        {sidebarContent}
+      </div>
+
+      {/* Mobile: overlay drawer */}
+      {isOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={onClose}
+          />
+          {/* Drawer */}
+          <div className="relative z-10 flex h-full animate-in slide-in-from-left duration-200">
+            {sidebarContent}
+          </div>
+        </div>
+      )}
+    </>
   );
 }

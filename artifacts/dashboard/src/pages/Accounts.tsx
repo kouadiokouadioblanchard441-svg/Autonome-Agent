@@ -12,15 +12,15 @@ export default function Accounts() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Agent Accounts</h1>
-        <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Agent Accounts</h1>
+        <Button className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" />
           Provision New Agent
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card className="bg-card/50 border-border/50">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Accounts</CardTitle>
@@ -60,8 +60,8 @@ export default function Accounts() {
           <CardTitle>Fleet Manifest</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border border-border/50">
-            <Table>
+          <div className="rounded-md border border-border/50 overflow-x-auto">
+            <Table className="min-w-[600px]">
               <TableHeader>
                 <TableRow className="border-border/50 hover:bg-transparent">
                   <TableHead>Identifier</TableHead>

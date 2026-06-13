@@ -64,12 +64,12 @@ export default function Escalations() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3"><AlertTriangle className="w-7 h-7 text-red-400" />Sentiment & Escalades</h1>
-          <p className="text-muted-foreground mt-1">Contacts détectés comme irrités ou suspicieux · AI mise en pause automatiquement</p>
+          <h1 className="text-xl sm:text-3xl font-bold flex items-center gap-3"><AlertTriangle className="w-6 h-6 sm:w-7 sm:h-7 text-red-400" />Sentiment & Escalades</h1>
+          <p className="text-muted-foreground mt-1 text-sm">Contacts détectés comme irrités ou suspicieux · AI mise en pause auto</p>
         </div>
-        {pending > 0 && <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-sm font-mono">{pending} en attente</Badge>}
+        {pending > 0 && <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-sm font-mono self-start">{pending} en attente</Badge>}
       </div>
 
       {/* Info */}

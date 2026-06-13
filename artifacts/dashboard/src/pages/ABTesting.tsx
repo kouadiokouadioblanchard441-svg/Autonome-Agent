@@ -47,7 +47,7 @@ export default function ABTesting() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3"><FlaskConical className="w-7 h-7 text-pink-400" />A/B Testing</h1>
+          <h1 className="text-xl sm:text-3xl font-bold flex items-center gap-3"><FlaskConical className="w-7 h-7 text-pink-400" />A/B Testing</h1>
           <p className="text-muted-foreground mt-1">Compare 2 variantes de messages · Sélection automatique du gagnant</p>
         </div>
         <Button onClick={() => setOpen(true)}><Plus className="w-4 h-4 mr-2" />Nouveau test</Button>
