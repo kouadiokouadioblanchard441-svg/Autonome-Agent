@@ -13,6 +13,7 @@ import {
   MessageCircle,
   Hash,
   Timer,
+  KeyRound,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { href: "/security", label: "Security", icon: ShieldAlert },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/notifications", label: "Notifications", icon: Bell },
+  { href: "/settings", label: "Secrets & Config", icon: KeyRound },
 ];
 
 export function Sidebar() {
@@ -46,7 +48,7 @@ export function Sidebar() {
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
-            
+
             return (
               <Link key={item.href} href={item.href} className="block">
                 <div
@@ -56,7 +58,7 @@ export function Sidebar() {
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                   )}
-                  data-testid={`link-${item.label.toLowerCase()}`}
+                  data-testid={`link-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
                 >
                   <Icon className="w-4 h-4" />
                   {item.label}
