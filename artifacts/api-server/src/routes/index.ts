@@ -12,6 +12,14 @@ import analyticsRouter from "./analytics";
 import notificationsRouter from "./notifications";
 import delayRouter from "./delay";
 import settingsRouter from "./settings";
+import warmupRouter from "./warmup";
+import proxiesRouter from "./proxies";
+import floodRouter from "./flood";
+import memoriesRouter from "./memories";
+import leadsRouter from "./leads";
+import abTestsRouter from "./ab-tests";
+import autoJoinRouter from "./auto-join";
+import escalationsRouter from "./escalations";
 
 const router: IRouter = Router();
 
@@ -28,5 +36,13 @@ router.use(analyticsRouter);
 router.use(notificationsRouter);
 router.use(delayRouter);
 router.use(settingsRouter);
+router.use(warmupRouter);
+router.use(proxiesRouter);
+router.use(floodRouter);
+router.use(memoriesRouter);
+router.use(leadsRouter);
+router.use(abTestsRouter);
+router.use(autoJoinRouter);
+router.use(escalationsRouter);
 
 export default router;

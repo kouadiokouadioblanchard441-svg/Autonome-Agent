@@ -18,6 +18,14 @@ import Settings from "@/pages/Settings";
 import Security from "@/pages/Security";
 import Analytics from "@/pages/Analytics";
 import Notifications from "@/pages/Notifications";
+import WarmupScheduler from "@/pages/WarmupScheduler";
+import ProxyManager from "@/pages/ProxyManager";
+import FloodTracker from "@/pages/FloodTracker";
+import MemoryEngine from "@/pages/MemoryEngine";
+import LeadFunnel from "@/pages/LeadFunnel";
+import ABTesting from "@/pages/ABTesting";
+import AutoJoin from "@/pages/AutoJoin";
+import Escalations from "@/pages/Escalations";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +46,14 @@ function Router() {
         <Route path="/security" component={Security} />
         <Route path="/analytics" component={Analytics} />
         <Route path="/notifications" component={Notifications} />
+        <Route path="/warmup" component={WarmupScheduler} />
+        <Route path="/proxy-manager" component={ProxyManager} />
+        <Route path="/flood-tracker" component={FloodTracker} />
+        <Route path="/memory-engine" component={MemoryEngine} />
+        <Route path="/lead-funnel" component={LeadFunnel} />
+        <Route path="/ab-testing" component={ABTesting} />
+        <Route path="/auto-join" component={AutoJoin} />
+        <Route path="/escalations" component={Escalations} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

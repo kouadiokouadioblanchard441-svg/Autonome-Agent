@@ -1006,6 +1006,706 @@ export const GetAccountActivityStatusResponse = zod.object({
 })
 
 
+export const ListWarmupPlansResponseItem = zod.object({
+  "id": zod.number(),
+  "accountId": zod.number(),
+  "status": zod.enum(['draft', 'active', 'paused', 'completed']),
+  "startDate": zod.string().nullish(),
+  "currentDay": zod.number(),
+  "totalDays": zod.number(),
+  "dailyLimitStart": zod.number(),
+  "dailyLimitEnd": zod.number(),
+  "todayCount": zod.number(),
+  "todayLimit": zod.number(),
+  "growthType": zod.enum(['linear', 'exponential']),
+  "notes": zod.string().nullish(),
+  "lastActivityAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListWarmupPlansResponse = zod.array(ListWarmupPlansResponseItem)
+
+
+export const CreateWarmupPlanBody = zod.object({
+  "accountId": zod.number().optional(),
+  "status": zod.enum(['draft', 'active', 'paused', 'completed']).optional(),
+  "totalDays": zod.number().optional(),
+  "dailyLimitStart": zod.number().optional(),
+  "dailyLimitEnd": zod.number().optional(),
+  "growthType": zod.enum(['linear', 'exponential']).optional(),
+  "notes": zod.string().optional()
+})
+
+
+export const UpdateWarmupPlanParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateWarmupPlanBody = zod.object({
+  "accountId": zod.number().optional(),
+  "status": zod.enum(['draft', 'active', 'paused', 'completed']).optional(),
+  "totalDays": zod.number().optional(),
+  "dailyLimitStart": zod.number().optional(),
+  "dailyLimitEnd": zod.number().optional(),
+  "growthType": zod.enum(['linear', 'exponential']).optional(),
+  "notes": zod.string().optional()
+})
+
+export const UpdateWarmupPlanResponse = zod.object({
+  "id": zod.number(),
+  "accountId": zod.number(),
+  "status": zod.enum(['draft', 'active', 'paused', 'completed']),
+  "startDate": zod.string().nullish(),
+  "currentDay": zod.number(),
+  "totalDays": zod.number(),
+  "dailyLimitStart": zod.number(),
+  "dailyLimitEnd": zod.number(),
+  "todayCount": zod.number(),
+  "todayLimit": zod.number(),
+  "growthType": zod.enum(['linear', 'exponential']),
+  "notes": zod.string().nullish(),
+  "lastActivityAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const DeleteWarmupPlanParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+export const AdvanceWarmupDayParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AdvanceWarmupDayResponse = zod.object({
+  "id": zod.number(),
+  "accountId": zod.number(),
+  "status": zod.enum(['draft', 'active', 'paused', 'completed']),
+  "startDate": zod.string().nullish(),
+  "currentDay": zod.number(),
+  "totalDays": zod.number(),
+  "dailyLimitStart": zod.number(),
+  "dailyLimitEnd": zod.number(),
+  "todayCount": zod.number(),
+  "todayLimit": zod.number(),
+  "growthType": zod.enum(['linear', 'exponential']),
+  "notes": zod.string().nullish(),
+  "lastActivityAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const ListProxiesResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "host": zod.string(),
+  "port": zod.number(),
+  "type": zod.enum(['socks5', 'http', 'https']),
+  "username": zod.string().nullish(),
+  "password": zod.string().nullish(),
+  "assignedAccountId": zod.number().nullish(),
+  "isActive": zod.boolean(),
+  "lastCheckedAt": zod.string().nullish(),
+  "lastCheckStatus": zod.string().nullish(),
+  "responseTimeMs": zod.number().nullish(),
+  "failCount": zod.number(),
+  "country": zod.string().nullish(),
+  "provider": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListProxiesResponse = zod.array(ListProxiesResponseItem)
+
+
+export const CreateProxyBody = zod.object({
+  "name": zod.string().optional(),
+  "host": zod.string().optional(),
+  "port": zod.number().optional(),
+  "type": zod.enum(['socks5', 'http', 'https']).optional(),
+  "username": zod.string().optional(),
+  "password": zod.string().optional(),
+  "assignedAccountId": zod.number().optional(),
+  "isActive": zod.boolean().optional(),
+  "country": zod.string().optional(),
+  "provider": zod.string().optional()
+})
+
+
+export const UpdateProxyParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateProxyBody = zod.object({
+  "name": zod.string().optional(),
+  "host": zod.string().optional(),
+  "port": zod.number().optional(),
+  "type": zod.enum(['socks5', 'http', 'https']).optional(),
+  "username": zod.string().optional(),
+  "password": zod.string().optional(),
+  "assignedAccountId": zod.number().optional(),
+  "isActive": zod.boolean().optional(),
+  "country": zod.string().optional(),
+  "provider": zod.string().optional()
+})
+
+export const UpdateProxyResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "host": zod.string(),
+  "port": zod.number(),
+  "type": zod.enum(['socks5', 'http', 'https']),
+  "username": zod.string().nullish(),
+  "password": zod.string().nullish(),
+  "assignedAccountId": zod.number().nullish(),
+  "isActive": zod.boolean(),
+  "lastCheckedAt": zod.string().nullish(),
+  "lastCheckStatus": zod.string().nullish(),
+  "responseTimeMs": zod.number().nullish(),
+  "failCount": zod.number(),
+  "country": zod.string().nullish(),
+  "provider": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const DeleteProxyParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+export const TestProxyParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const TestProxyResponse = zod.object({
+  "success": zod.boolean(),
+  "responseTimeMs": zod.number(),
+  "status": zod.string(),
+  "error": zod.string().nullish()
+})
+
+
+export const ListFloodEventsQueryParams = zod.object({
+  "accountId": zod.coerce.number().optional()
+})
+
+export const ListFloodEventsResponseItem = zod.object({
+  "id": zod.number(),
+  "accountId": zod.number(),
+  "triggeredAt": zod.string().optional(),
+  "waitSeconds": zod.number(),
+  "messagesSentBefore": zod.number(),
+  "context": zod.string().nullish(),
+  "severity": zod.enum(['low', 'medium', 'high', 'critical']),
+  "resolved": zod.boolean(),
+  "resolvedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListFloodEventsResponse = zod.array(ListFloodEventsResponseItem)
+
+
+export const CreateFloodEventBody = zod.object({
+  "accountId": zod.number(),
+  "waitSeconds": zod.number(),
+  "messagesSentBefore": zod.number().optional(),
+  "context": zod.string().optional(),
+  "severity": zod.enum(['low', 'medium', 'high', 'critical']).optional()
+})
+
+
+export const GetFloodStatsResponseItem = zod.object({
+  "accountId": zod.number(),
+  "totalEvents": zod.number(),
+  "avgWaitSeconds": zod.number(),
+  "lastEventAt": zod.string().nullable(),
+  "riskLevel": zod.enum(['safe', 'caution', 'danger', 'critical']),
+  "predictedNextFlood": zod.string().nullable()
+})
+export const GetFloodStatsResponse = zod.array(GetFloodStatsResponseItem)
+
+
+export const ResolveFloodEventParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ResolveFloodEventResponse = zod.object({
+  "id": zod.number(),
+  "accountId": zod.number(),
+  "triggeredAt": zod.string().optional(),
+  "waitSeconds": zod.number(),
+  "messagesSentBefore": zod.number(),
+  "context": zod.string().nullish(),
+  "severity": zod.enum(['low', 'medium', 'high', 'critical']),
+  "resolved": zod.boolean(),
+  "resolvedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const ListMemoriesQueryParams = zod.object({
+  "accountId": zod.coerce.number().optional(),
+  "interestLevel": zod.coerce.string().optional()
+})
+
+export const ListMemoriesResponseItem = zod.object({
+  "id": zod.number(),
+  "accountId": zod.number(),
+  "contactPhone": zod.string().nullish(),
+  "contactUsername": zod.string().nullish(),
+  "contactName": zod.string().nullish(),
+  "topics": zod.string().nullish(),
+  "lastMessage": zod.string().nullish(),
+  "lastMessageAt": zod.string().nullish(),
+  "interestLevel": zod.enum(['cold', 'warm', 'hot']),
+  "detectedLanguage": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "keyFacts": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+export const ListMemoriesResponse = zod.array(ListMemoriesResponseItem)
+
+
+export const CreateMemoryBody = zod.object({
+  "accountId": zod.number().optional(),
+  "contactPhone": zod.string().optional(),
+  "contactUsername": zod.string().optional(),
+  "contactName": zod.string().optional(),
+  "topics": zod.string().optional(),
+  "lastMessage": zod.string().optional(),
+  "interestLevel": zod.enum(['cold', 'warm', 'hot']).optional(),
+  "detectedLanguage": zod.string().optional(),
+  "notes": zod.string().optional(),
+  "keyFacts": zod.string().optional()
+})
+
+
+export const UpdateMemoryParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateMemoryBody = zod.object({
+  "accountId": zod.number().optional(),
+  "contactPhone": zod.string().optional(),
+  "contactUsername": zod.string().optional(),
+  "contactName": zod.string().optional(),
+  "topics": zod.string().optional(),
+  "lastMessage": zod.string().optional(),
+  "interestLevel": zod.enum(['cold', 'warm', 'hot']).optional(),
+  "detectedLanguage": zod.string().optional(),
+  "notes": zod.string().optional(),
+  "keyFacts": zod.string().optional()
+})
+
+export const UpdateMemoryResponse = zod.object({
+  "id": zod.number(),
+  "accountId": zod.number(),
+  "contactPhone": zod.string().nullish(),
+  "contactUsername": zod.string().nullish(),
+  "contactName": zod.string().nullish(),
+  "topics": zod.string().nullish(),
+  "lastMessage": zod.string().nullish(),
+  "lastMessageAt": zod.string().nullish(),
+  "interestLevel": zod.enum(['cold', 'warm', 'hot']),
+  "detectedLanguage": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "keyFacts": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+export const DeleteMemoryParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+export const ListLeadsQueryParams = zod.object({
+  "stage": zod.coerce.string().optional(),
+  "accountId": zod.coerce.number().optional()
+})
+
+export const ListLeadsResponseItem = zod.object({
+  "id": zod.number(),
+  "accountId": zod.number(),
+  "contactPhone": zod.string().nullish(),
+  "contactUsername": zod.string().nullish(),
+  "contactName": zod.string(),
+  "stage": zod.enum(['cold', 'contacted', 'interested', 'negotiating', 'converted', 'lost']),
+  "campaignId": zod.number().nullish(),
+  "sourceGroupId": zod.number().nullish(),
+  "sourceGroupName": zod.string().nullish(),
+  "firstContactAt": zod.string().nullish(),
+  "lastContactAt": zod.string().nullish(),
+  "conversionAt": zod.string().nullish(),
+  "messageCount": zod.number(),
+  "tags": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "value": zod.number().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+export const ListLeadsResponse = zod.array(ListLeadsResponseItem)
+
+
+export const CreateLeadBody = zod.object({
+  "accountId": zod.number().optional(),
+  "contactPhone": zod.string().optional(),
+  "contactUsername": zod.string().optional(),
+  "contactName": zod.string().optional(),
+  "stage": zod.enum(['cold', 'contacted', 'interested', 'negotiating', 'converted', 'lost']).optional(),
+  "campaignId": zod.number().optional(),
+  "sourceGroupId": zod.number().optional(),
+  "sourceGroupName": zod.string().optional(),
+  "notes": zod.string().optional(),
+  "tags": zod.string().optional(),
+  "value": zod.number().optional()
+})
+
+
+export const GetLeadStatsResponse = zod.object({
+  "cold": zod.number(),
+  "contacted": zod.number(),
+  "interested": zod.number(),
+  "negotiating": zod.number(),
+  "converted": zod.number(),
+  "lost": zod.number(),
+  "total": zod.number(),
+  "conversionRate": zod.number()
+})
+
+
+export const UpdateLeadParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateLeadBody = zod.object({
+  "accountId": zod.number().optional(),
+  "contactPhone": zod.string().optional(),
+  "contactUsername": zod.string().optional(),
+  "contactName": zod.string().optional(),
+  "stage": zod.enum(['cold', 'contacted', 'interested', 'negotiating', 'converted', 'lost']).optional(),
+  "campaignId": zod.number().optional(),
+  "sourceGroupId": zod.number().optional(),
+  "sourceGroupName": zod.string().optional(),
+  "notes": zod.string().optional(),
+  "tags": zod.string().optional(),
+  "value": zod.number().optional()
+})
+
+export const UpdateLeadResponse = zod.object({
+  "id": zod.number(),
+  "accountId": zod.number(),
+  "contactPhone": zod.string().nullish(),
+  "contactUsername": zod.string().nullish(),
+  "contactName": zod.string(),
+  "stage": zod.enum(['cold', 'contacted', 'interested', 'negotiating', 'converted', 'lost']),
+  "campaignId": zod.number().nullish(),
+  "sourceGroupId": zod.number().nullish(),
+  "sourceGroupName": zod.string().nullish(),
+  "firstContactAt": zod.string().nullish(),
+  "lastContactAt": zod.string().nullish(),
+  "conversionAt": zod.string().nullish(),
+  "messageCount": zod.number(),
+  "tags": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "value": zod.number().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+export const DeleteLeadParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+export const ListAbTestsResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "campaignId": zod.number().nullish(),
+  "variantA": zod.string(),
+  "variantB": zod.string(),
+  "status": zod.enum(['draft', 'active', 'completed']),
+  "winnerVariant": zod.string().nullish(),
+  "sentA": zod.number(),
+  "sentB": zod.number(),
+  "repliesA": zod.number(),
+  "repliesB": zod.number(),
+  "replyRateA": zod.number(),
+  "replyRateB": zod.number(),
+  "targetCount": zod.number(),
+  "confidenceThreshold": zod.number(),
+  "autoSelectWinner": zod.number(),
+  "startedAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListAbTestsResponse = zod.array(ListAbTestsResponseItem)
+
+
+export const CreateAbTestBody = zod.object({
+  "name": zod.string().optional(),
+  "campaignId": zod.number().optional(),
+  "variantA": zod.string().optional(),
+  "variantB": zod.string().optional(),
+  "targetCount": zod.number().optional(),
+  "confidenceThreshold": zod.number().optional(),
+  "autoSelectWinner": zod.number().optional()
+})
+
+
+export const UpdateAbTestParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateAbTestBody = zod.object({
+  "name": zod.string().optional(),
+  "campaignId": zod.number().optional(),
+  "variantA": zod.string().optional(),
+  "variantB": zod.string().optional(),
+  "targetCount": zod.number().optional(),
+  "confidenceThreshold": zod.number().optional(),
+  "autoSelectWinner": zod.number().optional()
+})
+
+export const UpdateAbTestResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "campaignId": zod.number().nullish(),
+  "variantA": zod.string(),
+  "variantB": zod.string(),
+  "status": zod.enum(['draft', 'active', 'completed']),
+  "winnerVariant": zod.string().nullish(),
+  "sentA": zod.number(),
+  "sentB": zod.number(),
+  "repliesA": zod.number(),
+  "repliesB": zod.number(),
+  "replyRateA": zod.number(),
+  "replyRateB": zod.number(),
+  "targetCount": zod.number(),
+  "confidenceThreshold": zod.number(),
+  "autoSelectWinner": zod.number(),
+  "startedAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const DeleteAbTestParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+export const StartAbTestParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const StartAbTestResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "campaignId": zod.number().nullish(),
+  "variantA": zod.string(),
+  "variantB": zod.string(),
+  "status": zod.enum(['draft', 'active', 'completed']),
+  "winnerVariant": zod.string().nullish(),
+  "sentA": zod.number(),
+  "sentB": zod.number(),
+  "repliesA": zod.number(),
+  "repliesB": zod.number(),
+  "replyRateA": zod.number(),
+  "replyRateB": zod.number(),
+  "targetCount": zod.number(),
+  "confidenceThreshold": zod.number(),
+  "autoSelectWinner": zod.number(),
+  "startedAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const RecordAbTestReplyParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const RecordAbTestReplyBody = zod.object({
+  "variant": zod.enum(['a', 'b'])
+})
+
+export const RecordAbTestReplyResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "campaignId": zod.number().nullish(),
+  "variantA": zod.string(),
+  "variantB": zod.string(),
+  "status": zod.enum(['draft', 'active', 'completed']),
+  "winnerVariant": zod.string().nullish(),
+  "sentA": zod.number(),
+  "sentB": zod.number(),
+  "repliesA": zod.number(),
+  "repliesB": zod.number(),
+  "replyRateA": zod.number(),
+  "replyRateB": zod.number(),
+  "targetCount": zod.number(),
+  "confidenceThreshold": zod.number(),
+  "autoSelectWinner": zod.number(),
+  "startedAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const ListAutoJoinTargetsResponseItem = zod.object({
+  "id": zod.number(),
+  "accountId": zod.number(),
+  "keywords": zod.string(),
+  "targetType": zod.enum(['group', 'channel', 'both']),
+  "status": zod.enum(['active', 'paused', 'completed']),
+  "dailyJoinLimit": zod.number(),
+  "joinedToday": zod.number(),
+  "totalJoined": zod.number(),
+  "maxTotal": zod.number(),
+  "foundGroups": zod.string().nullish(),
+  "scrapeMembers": zod.boolean(),
+  "minMemberCount": zod.number(),
+  "lastScanAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListAutoJoinTargetsResponse = zod.array(ListAutoJoinTargetsResponseItem)
+
+
+export const CreateAutoJoinTargetBody = zod.object({
+  "accountId": zod.number().optional(),
+  "keywords": zod.string().optional(),
+  "targetType": zod.enum(['group', 'channel', 'both']).optional(),
+  "status": zod.enum(['active', 'paused', 'completed']).optional(),
+  "dailyJoinLimit": zod.number().optional(),
+  "maxTotal": zod.number().optional(),
+  "scrapeMembers": zod.boolean().optional(),
+  "minMemberCount": zod.number().optional()
+})
+
+
+export const UpdateAutoJoinTargetParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateAutoJoinTargetBody = zod.object({
+  "accountId": zod.number().optional(),
+  "keywords": zod.string().optional(),
+  "targetType": zod.enum(['group', 'channel', 'both']).optional(),
+  "status": zod.enum(['active', 'paused', 'completed']).optional(),
+  "dailyJoinLimit": zod.number().optional(),
+  "maxTotal": zod.number().optional(),
+  "scrapeMembers": zod.boolean().optional(),
+  "minMemberCount": zod.number().optional()
+})
+
+export const UpdateAutoJoinTargetResponse = zod.object({
+  "id": zod.number(),
+  "accountId": zod.number(),
+  "keywords": zod.string(),
+  "targetType": zod.enum(['group', 'channel', 'both']),
+  "status": zod.enum(['active', 'paused', 'completed']),
+  "dailyJoinLimit": zod.number(),
+  "joinedToday": zod.number(),
+  "totalJoined": zod.number(),
+  "maxTotal": zod.number(),
+  "foundGroups": zod.string().nullish(),
+  "scrapeMembers": zod.boolean(),
+  "minMemberCount": zod.number(),
+  "lastScanAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const DeleteAutoJoinTargetParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+export const ListEscalationsQueryParams = zod.object({
+  "status": zod.coerce.string().optional()
+})
+
+export const ListEscalationsResponseItem = zod.object({
+  "id": zod.number(),
+  "accountId": zod.number(),
+  "contactPhone": zod.string().nullish(),
+  "contactUsername": zod.string().nullish(),
+  "contactName": zod.string().nullish(),
+  "conversationSnippet": zod.string().nullish(),
+  "sentimentScore": zod.number(),
+  "reason": zod.enum(['angry', 'suspicious', 'human_needed', 'spam_detected', 'other']),
+  "status": zod.enum(['pending', 'reviewed', 'resolved', 'ignored']),
+  "aiPaused": zod.number(),
+  "detectedLanguage": zod.string().nullish(),
+  "assignedTo": zod.string().nullish(),
+  "reviewNote": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "resolvedAt": zod.string().nullish()
+})
+export const ListEscalationsResponse = zod.array(ListEscalationsResponseItem)
+
+
+export const CreateEscalationBody = zod.object({
+  "accountId": zod.number().optional(),
+  "contactPhone": zod.string().optional(),
+  "contactUsername": zod.string().optional(),
+  "contactName": zod.string().optional(),
+  "conversationSnippet": zod.string().optional(),
+  "sentimentScore": zod.number().optional(),
+  "reason": zod.enum(['angry', 'suspicious', 'human_needed', 'spam_detected', 'other']).optional(),
+  "status": zod.enum(['pending', 'reviewed', 'resolved', 'ignored']).optional(),
+  "aiPaused": zod.number().optional(),
+  "detectedLanguage": zod.string().optional(),
+  "assignedTo": zod.string().optional(),
+  "reviewNote": zod.string().optional()
+})
+
+
+export const UpdateEscalationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateEscalationBody = zod.object({
+  "accountId": zod.number().optional(),
+  "contactPhone": zod.string().optional(),
+  "contactUsername": zod.string().optional(),
+  "contactName": zod.string().optional(),
+  "conversationSnippet": zod.string().optional(),
+  "sentimentScore": zod.number().optional(),
+  "reason": zod.enum(['angry', 'suspicious', 'human_needed', 'spam_detected', 'other']).optional(),
+  "status": zod.enum(['pending', 'reviewed', 'resolved', 'ignored']).optional(),
+  "aiPaused": zod.number().optional(),
+  "detectedLanguage": zod.string().optional(),
+  "assignedTo": zod.string().optional(),
+  "reviewNote": zod.string().optional()
+})
+
+export const UpdateEscalationResponse = zod.object({
+  "id": zod.number(),
+  "accountId": zod.number(),
+  "contactPhone": zod.string().nullish(),
+  "contactUsername": zod.string().nullish(),
+  "contactName": zod.string().nullish(),
+  "conversationSnippet": zod.string().nullish(),
+  "sentimentScore": zod.number(),
+  "reason": zod.enum(['angry', 'suspicious', 'human_needed', 'spam_detected', 'other']),
+  "status": zod.enum(['pending', 'reviewed', 'resolved', 'ignored']),
+  "aiPaused": zod.number(),
+  "detectedLanguage": zod.string().nullish(),
+  "assignedTo": zod.string().nullish(),
+  "reviewNote": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "resolvedAt": zod.string().nullish()
+})
+
+
+export const DeleteEscalationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
 /**
  * @summary Get all settings (secrets masked)
  */

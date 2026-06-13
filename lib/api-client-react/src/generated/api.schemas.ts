@@ -588,6 +588,546 @@ export interface Notification {
   createdAt: string;
 }
 
+export type WarmupPlanStatus = typeof WarmupPlanStatus[keyof typeof WarmupPlanStatus];
+
+
+export const WarmupPlanStatus = {
+  draft: 'draft',
+  active: 'active',
+  paused: 'paused',
+  completed: 'completed',
+} as const;
+
+export type WarmupPlanGrowthType = typeof WarmupPlanGrowthType[keyof typeof WarmupPlanGrowthType];
+
+
+export const WarmupPlanGrowthType = {
+  linear: 'linear',
+  exponential: 'exponential',
+} as const;
+
+export interface WarmupPlan {
+  id: number;
+  accountId: number;
+  status: WarmupPlanStatus;
+  /** @nullable */
+  startDate?: string | null;
+  currentDay: number;
+  totalDays: number;
+  dailyLimitStart: number;
+  dailyLimitEnd: number;
+  todayCount: number;
+  todayLimit: number;
+  growthType: WarmupPlanGrowthType;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  lastActivityAt?: string | null;
+  createdAt: string;
+}
+
+export type WarmupPlanInputStatus = typeof WarmupPlanInputStatus[keyof typeof WarmupPlanInputStatus];
+
+
+export const WarmupPlanInputStatus = {
+  draft: 'draft',
+  active: 'active',
+  paused: 'paused',
+  completed: 'completed',
+} as const;
+
+export type WarmupPlanInputGrowthType = typeof WarmupPlanInputGrowthType[keyof typeof WarmupPlanInputGrowthType];
+
+
+export const WarmupPlanInputGrowthType = {
+  linear: 'linear',
+  exponential: 'exponential',
+} as const;
+
+export interface WarmupPlanInput {
+  accountId?: number;
+  status?: WarmupPlanInputStatus;
+  totalDays?: number;
+  dailyLimitStart?: number;
+  dailyLimitEnd?: number;
+  growthType?: WarmupPlanInputGrowthType;
+  notes?: string;
+}
+
+export type ProxyType = typeof ProxyType[keyof typeof ProxyType];
+
+
+export const ProxyType = {
+  socks5: 'socks5',
+  http: 'http',
+  https: 'https',
+} as const;
+
+export interface Proxy {
+  id: number;
+  name: string;
+  host: string;
+  port: number;
+  type: ProxyType;
+  /** @nullable */
+  username?: string | null;
+  /** @nullable */
+  password?: string | null;
+  /** @nullable */
+  assignedAccountId?: number | null;
+  isActive: boolean;
+  /** @nullable */
+  lastCheckedAt?: string | null;
+  /** @nullable */
+  lastCheckStatus?: string | null;
+  /** @nullable */
+  responseTimeMs?: number | null;
+  failCount: number;
+  /** @nullable */
+  country?: string | null;
+  /** @nullable */
+  provider?: string | null;
+  createdAt: string;
+}
+
+export type ProxyInputType = typeof ProxyInputType[keyof typeof ProxyInputType];
+
+
+export const ProxyInputType = {
+  socks5: 'socks5',
+  http: 'http',
+  https: 'https',
+} as const;
+
+export interface ProxyInput {
+  name?: string;
+  host?: string;
+  port?: number;
+  type?: ProxyInputType;
+  username?: string;
+  password?: string;
+  assignedAccountId?: number;
+  isActive?: boolean;
+  country?: string;
+  provider?: string;
+}
+
+export interface ProxyTestResult {
+  success: boolean;
+  responseTimeMs: number;
+  status: string;
+  /** @nullable */
+  error?: string | null;
+}
+
+export type FloodEventSeverity = typeof FloodEventSeverity[keyof typeof FloodEventSeverity];
+
+
+export const FloodEventSeverity = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  critical: 'critical',
+} as const;
+
+export interface FloodEvent {
+  id: number;
+  accountId: number;
+  triggeredAt?: string;
+  waitSeconds: number;
+  messagesSentBefore: number;
+  /** @nullable */
+  context?: string | null;
+  severity: FloodEventSeverity;
+  resolved: boolean;
+  /** @nullable */
+  resolvedAt?: string | null;
+  createdAt: string;
+}
+
+export type FloodEventInputSeverity = typeof FloodEventInputSeverity[keyof typeof FloodEventInputSeverity];
+
+
+export const FloodEventInputSeverity = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  critical: 'critical',
+} as const;
+
+export interface FloodEventInput {
+  accountId: number;
+  waitSeconds: number;
+  messagesSentBefore?: number;
+  context?: string;
+  severity?: FloodEventInputSeverity;
+}
+
+export type FloodAccountStatsRiskLevel = typeof FloodAccountStatsRiskLevel[keyof typeof FloodAccountStatsRiskLevel];
+
+
+export const FloodAccountStatsRiskLevel = {
+  safe: 'safe',
+  caution: 'caution',
+  danger: 'danger',
+  critical: 'critical',
+} as const;
+
+export interface FloodAccountStats {
+  accountId: number;
+  totalEvents: number;
+  avgWaitSeconds: number;
+  /** @nullable */
+  lastEventAt: string | null;
+  riskLevel: FloodAccountStatsRiskLevel;
+  /** @nullable */
+  predictedNextFlood: string | null;
+}
+
+export type ConversationMemoryInterestLevel = typeof ConversationMemoryInterestLevel[keyof typeof ConversationMemoryInterestLevel];
+
+
+export const ConversationMemoryInterestLevel = {
+  cold: 'cold',
+  warm: 'warm',
+  hot: 'hot',
+} as const;
+
+export interface ConversationMemory {
+  id: number;
+  accountId: number;
+  /** @nullable */
+  contactPhone?: string | null;
+  /** @nullable */
+  contactUsername?: string | null;
+  /** @nullable */
+  contactName?: string | null;
+  /** @nullable */
+  topics?: string | null;
+  /** @nullable */
+  lastMessage?: string | null;
+  /** @nullable */
+  lastMessageAt?: string | null;
+  interestLevel: ConversationMemoryInterestLevel;
+  /** @nullable */
+  detectedLanguage?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  keyFacts?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type MemoryInputInterestLevel = typeof MemoryInputInterestLevel[keyof typeof MemoryInputInterestLevel];
+
+
+export const MemoryInputInterestLevel = {
+  cold: 'cold',
+  warm: 'warm',
+  hot: 'hot',
+} as const;
+
+export interface MemoryInput {
+  accountId?: number;
+  contactPhone?: string;
+  contactUsername?: string;
+  contactName?: string;
+  topics?: string;
+  lastMessage?: string;
+  interestLevel?: MemoryInputInterestLevel;
+  detectedLanguage?: string;
+  notes?: string;
+  keyFacts?: string;
+}
+
+export type LeadStage = typeof LeadStage[keyof typeof LeadStage];
+
+
+export const LeadStage = {
+  cold: 'cold',
+  contacted: 'contacted',
+  interested: 'interested',
+  negotiating: 'negotiating',
+  converted: 'converted',
+  lost: 'lost',
+} as const;
+
+export interface Lead {
+  id: number;
+  accountId: number;
+  /** @nullable */
+  contactPhone?: string | null;
+  /** @nullable */
+  contactUsername?: string | null;
+  contactName: string;
+  stage: LeadStage;
+  /** @nullable */
+  campaignId?: number | null;
+  /** @nullable */
+  sourceGroupId?: number | null;
+  /** @nullable */
+  sourceGroupName?: string | null;
+  /** @nullable */
+  firstContactAt?: string | null;
+  /** @nullable */
+  lastContactAt?: string | null;
+  /** @nullable */
+  conversionAt?: string | null;
+  messageCount: number;
+  /** @nullable */
+  tags?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  value?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type LeadInputStage = typeof LeadInputStage[keyof typeof LeadInputStage];
+
+
+export const LeadInputStage = {
+  cold: 'cold',
+  contacted: 'contacted',
+  interested: 'interested',
+  negotiating: 'negotiating',
+  converted: 'converted',
+  lost: 'lost',
+} as const;
+
+export interface LeadInput {
+  accountId?: number;
+  contactPhone?: string;
+  contactUsername?: string;
+  contactName?: string;
+  stage?: LeadInputStage;
+  campaignId?: number;
+  sourceGroupId?: number;
+  sourceGroupName?: string;
+  notes?: string;
+  tags?: string;
+  value?: number;
+}
+
+export interface LeadFunnelStats {
+  cold: number;
+  contacted: number;
+  interested: number;
+  negotiating: number;
+  converted: number;
+  lost: number;
+  total: number;
+  conversionRate: number;
+}
+
+export type AbTestStatus = typeof AbTestStatus[keyof typeof AbTestStatus];
+
+
+export const AbTestStatus = {
+  draft: 'draft',
+  active: 'active',
+  completed: 'completed',
+} as const;
+
+export interface AbTest {
+  id: number;
+  name: string;
+  /** @nullable */
+  campaignId?: number | null;
+  variantA: string;
+  variantB: string;
+  status: AbTestStatus;
+  /** @nullable */
+  winnerVariant?: string | null;
+  sentA: number;
+  sentB: number;
+  repliesA: number;
+  repliesB: number;
+  replyRateA: number;
+  replyRateB: number;
+  targetCount: number;
+  confidenceThreshold: number;
+  autoSelectWinner: number;
+  /** @nullable */
+  startedAt?: string | null;
+  /** @nullable */
+  completedAt?: string | null;
+  createdAt: string;
+}
+
+export interface AbTestInput {
+  name?: string;
+  campaignId?: number;
+  variantA?: string;
+  variantB?: string;
+  targetCount?: number;
+  confidenceThreshold?: number;
+  autoSelectWinner?: number;
+}
+
+export type AbTestReplyInputVariant = typeof AbTestReplyInputVariant[keyof typeof AbTestReplyInputVariant];
+
+
+export const AbTestReplyInputVariant = {
+  a: 'a',
+  b: 'b',
+} as const;
+
+export interface AbTestReplyInput {
+  variant: AbTestReplyInputVariant;
+}
+
+export type AutoJoinTargetTargetType = typeof AutoJoinTargetTargetType[keyof typeof AutoJoinTargetTargetType];
+
+
+export const AutoJoinTargetTargetType = {
+  group: 'group',
+  channel: 'channel',
+  both: 'both',
+} as const;
+
+export type AutoJoinTargetStatus = typeof AutoJoinTargetStatus[keyof typeof AutoJoinTargetStatus];
+
+
+export const AutoJoinTargetStatus = {
+  active: 'active',
+  paused: 'paused',
+  completed: 'completed',
+} as const;
+
+export interface AutoJoinTarget {
+  id: number;
+  accountId: number;
+  keywords: string;
+  targetType: AutoJoinTargetTargetType;
+  status: AutoJoinTargetStatus;
+  dailyJoinLimit: number;
+  joinedToday: number;
+  totalJoined: number;
+  maxTotal: number;
+  /** @nullable */
+  foundGroups?: string | null;
+  scrapeMembers: boolean;
+  minMemberCount: number;
+  /** @nullable */
+  lastScanAt?: string | null;
+  createdAt: string;
+}
+
+export type AutoJoinTargetInputTargetType = typeof AutoJoinTargetInputTargetType[keyof typeof AutoJoinTargetInputTargetType];
+
+
+export const AutoJoinTargetInputTargetType = {
+  group: 'group',
+  channel: 'channel',
+  both: 'both',
+} as const;
+
+export type AutoJoinTargetInputStatus = typeof AutoJoinTargetInputStatus[keyof typeof AutoJoinTargetInputStatus];
+
+
+export const AutoJoinTargetInputStatus = {
+  active: 'active',
+  paused: 'paused',
+  completed: 'completed',
+} as const;
+
+export interface AutoJoinTargetInput {
+  accountId?: number;
+  keywords?: string;
+  targetType?: AutoJoinTargetInputTargetType;
+  status?: AutoJoinTargetInputStatus;
+  dailyJoinLimit?: number;
+  maxTotal?: number;
+  scrapeMembers?: boolean;
+  minMemberCount?: number;
+}
+
+export type EscalationReason = typeof EscalationReason[keyof typeof EscalationReason];
+
+
+export const EscalationReason = {
+  angry: 'angry',
+  suspicious: 'suspicious',
+  human_needed: 'human_needed',
+  spam_detected: 'spam_detected',
+  other: 'other',
+} as const;
+
+export type EscalationStatus = typeof EscalationStatus[keyof typeof EscalationStatus];
+
+
+export const EscalationStatus = {
+  pending: 'pending',
+  reviewed: 'reviewed',
+  resolved: 'resolved',
+  ignored: 'ignored',
+} as const;
+
+export interface Escalation {
+  id: number;
+  accountId: number;
+  /** @nullable */
+  contactPhone?: string | null;
+  /** @nullable */
+  contactUsername?: string | null;
+  /** @nullable */
+  contactName?: string | null;
+  /** @nullable */
+  conversationSnippet?: string | null;
+  sentimentScore: number;
+  reason: EscalationReason;
+  status: EscalationStatus;
+  aiPaused: number;
+  /** @nullable */
+  detectedLanguage?: string | null;
+  /** @nullable */
+  assignedTo?: string | null;
+  /** @nullable */
+  reviewNote?: string | null;
+  createdAt: string;
+  /** @nullable */
+  resolvedAt?: string | null;
+}
+
+export type EscalationInputReason = typeof EscalationInputReason[keyof typeof EscalationInputReason];
+
+
+export const EscalationInputReason = {
+  angry: 'angry',
+  suspicious: 'suspicious',
+  human_needed: 'human_needed',
+  spam_detected: 'spam_detected',
+  other: 'other',
+} as const;
+
+export type EscalationInputStatus = typeof EscalationInputStatus[keyof typeof EscalationInputStatus];
+
+
+export const EscalationInputStatus = {
+  pending: 'pending',
+  reviewed: 'reviewed',
+  resolved: 'resolved',
+  ignored: 'ignored',
+} as const;
+
+export interface EscalationInput {
+  accountId?: number;
+  contactPhone?: string;
+  contactUsername?: string;
+  contactName?: string;
+  conversationSnippet?: string;
+  sentimentScore?: number;
+  reason?: EscalationInputReason;
+  status?: EscalationInputStatus;
+  aiPaused?: number;
+  detectedLanguage?: string;
+  assignedTo?: string;
+  reviewNote?: string;
+}
+
 export interface AppSetting {
   id: number;
   key: string;
@@ -756,5 +1296,23 @@ export type ListMessagesParams = {
 accountId?: number;
 groupId?: number;
 limit?: number;
+};
+
+export type ListFloodEventsParams = {
+accountId?: number;
+};
+
+export type ListMemoriesParams = {
+accountId?: number;
+interestLevel?: string;
+};
+
+export type ListLeadsParams = {
+stage?: string;
+accountId?: number;
+};
+
+export type ListEscalationsParams = {
+status?: string;
 };
 

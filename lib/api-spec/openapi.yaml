@@ -33,6 +33,22 @@ tags:
     description: Human delay engine configuration
   - name: settings
     description: Application settings and secrets
+  - name: warmup
+    description: Account warm-up scheduler
+  - name: proxies
+    description: Proxy and IP manager
+  - name: flood
+    description: FloodWait and rate limit tracker
+  - name: memories
+    description: Conversation memory engine
+  - name: leads
+    description: Lead funnel tracker
+  - name: abtests
+    description: A/B message testing
+  - name: autojoin
+    description: Auto-join target groups
+  - name: escalations
+    description: Sentiment analysis and escalation
 
 paths:
   /healthz:
@@ -970,6 +986,642 @@ paths:
               schema:
                 $ref: "#/components/schemas/ActivityStatus"
 
+  # ── WARMUP PLANS ──────────────────────────────────────
+  /warmup:
+    get:
+      operationId: listWarmupPlans
+      tags: [warmup]
+      responses:
+        "200":
+          description: List of warmup plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WarmupPlan"
+    post:
+      operationId: createWarmupPlan
+      tags: [warmup]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WarmupPlanInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarmupPlan"
+  /warmup/{id}:
+    patch:
+      operationId: updateWarmupPlan
+      tags: [warmup]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WarmupPlanInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarmupPlan"
+    delete:
+      operationId: deleteWarmupPlan
+      tags: [warmup]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+  /warmup/{id}/advance:
+    post:
+      operationId: advanceWarmupDay
+      tags: [warmup]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Advanced to next day
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarmupPlan"
+
+  # ── PROXIES ───────────────────────────────────────────
+  /proxies:
+    get:
+      operationId: listProxies
+      tags: [proxies]
+      responses:
+        "200":
+          description: List of proxies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Proxy"
+    post:
+      operationId: createProxy
+      tags: [proxies]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProxyInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proxy"
+  /proxies/{id}:
+    patch:
+      operationId: updateProxy
+      tags: [proxies]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProxyInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proxy"
+    delete:
+      operationId: deleteProxy
+      tags: [proxies]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+  /proxies/{id}/test:
+    post:
+      operationId: testProxy
+      tags: [proxies]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Test result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProxyTestResult"
+
+  # ── FLOOD EVENTS ──────────────────────────────────────
+  /flood-events:
+    get:
+      operationId: listFloodEvents
+      tags: [flood]
+      parameters:
+        - name: accountId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of flood events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FloodEvent"
+    post:
+      operationId: createFloodEvent
+      tags: [flood]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FloodEventInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FloodEvent"
+  /flood-events/stats:
+    get:
+      operationId: getFloodStats
+      tags: [flood]
+      responses:
+        "200":
+          description: Flood statistics per account
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FloodAccountStats"
+  /flood-events/{id}/resolve:
+    post:
+      operationId: resolveFloodEvent
+      tags: [flood]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Resolved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FloodEvent"
+
+  # ── CONVERSATION MEMORIES ─────────────────────────────
+  /memories:
+    get:
+      operationId: listMemories
+      tags: [memories]
+      parameters:
+        - name: accountId
+          in: query
+          schema:
+            type: integer
+        - name: interestLevel
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of conversation memories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConversationMemory"
+    post:
+      operationId: createMemory
+      tags: [memories]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemoryInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationMemory"
+  /memories/{id}:
+    patch:
+      operationId: updateMemory
+      tags: [memories]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemoryInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationMemory"
+    delete:
+      operationId: deleteMemory
+      tags: [memories]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── LEADS ─────────────────────────────────────────────
+  /leads:
+    get:
+      operationId: listLeads
+      tags: [leads]
+      parameters:
+        - name: stage
+          in: query
+          schema:
+            type: string
+        - name: accountId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of leads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lead"
+    post:
+      operationId: createLead
+      tags: [leads]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+  /leads/stats:
+    get:
+      operationId: getLeadStats
+      tags: [leads]
+      responses:
+        "200":
+          description: Funnel statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeadFunnelStats"
+  /leads/{id}:
+    patch:
+      operationId: updateLead
+      tags: [leads]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+    delete:
+      operationId: deleteLead
+      tags: [leads]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── A/B TESTS ─────────────────────────────────────────
+  /ab-tests:
+    get:
+      operationId: listAbTests
+      tags: [abtests]
+      responses:
+        "200":
+          description: List of A/B tests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AbTest"
+    post:
+      operationId: createAbTest
+      tags: [abtests]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AbTestInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AbTest"
+  /ab-tests/{id}:
+    patch:
+      operationId: updateAbTest
+      tags: [abtests]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AbTestInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AbTest"
+    delete:
+      operationId: deleteAbTest
+      tags: [abtests]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+  /ab-tests/{id}/start:
+    post:
+      operationId: startAbTest
+      tags: [abtests]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AbTest"
+  /ab-tests/{id}/record:
+    post:
+      operationId: recordAbTestReply
+      tags: [abtests]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AbTestReplyInput"
+      responses:
+        "200":
+          description: Recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AbTest"
+
+  # ── AUTO-JOIN TARGETS ────────────────────────────────
+  /auto-join:
+    get:
+      operationId: listAutoJoinTargets
+      tags: [autojoin]
+      responses:
+        "200":
+          description: List of auto-join targets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AutoJoinTarget"
+    post:
+      operationId: createAutoJoinTarget
+      tags: [autojoin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutoJoinTargetInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoJoinTarget"
+  /auto-join/{id}:
+    patch:
+      operationId: updateAutoJoinTarget
+      tags: [autojoin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutoJoinTargetInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoJoinTarget"
+    delete:
+      operationId: deleteAutoJoinTarget
+      tags: [autojoin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── ESCALATIONS ───────────────────────────────────────
+  /escalations:
+    get:
+      operationId: listEscalations
+      tags: [escalations]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of escalations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Escalation"
+    post:
+      operationId: createEscalation
+      tags: [escalations]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EscalationInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Escalation"
+  /escalations/{id}:
+    patch:
+      operationId: updateEscalation
+      tags: [escalations]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EscalationInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Escalation"
+    delete:
+      operationId: deleteEscalation
+      tags: [escalations]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
   # ── APP SETTINGS ──────────────────────────────────────
   /settings:
     get:
@@ -1755,6 +2407,548 @@ components:
         accountId:
           type: ["integer", "null"]
         createdAt:
+          type: string
+
+    # ── WARMUP PLANS ──────────────────────────────────────
+    WarmupPlan:
+      type: object
+      required: [id, accountId, status, currentDay, totalDays, dailyLimitStart, dailyLimitEnd, todayCount, todayLimit, growthType, createdAt]
+      properties:
+        id:
+          type: integer
+        accountId:
+          type: integer
+        status:
+          type: string
+          enum: [draft, active, paused, completed]
+        startDate:
+          type: ["string", "null"]
+        currentDay:
+          type: integer
+        totalDays:
+          type: integer
+        dailyLimitStart:
+          type: integer
+        dailyLimitEnd:
+          type: integer
+        todayCount:
+          type: integer
+        todayLimit:
+          type: integer
+        growthType:
+          type: string
+          enum: [linear, exponential]
+        notes:
+          type: ["string", "null"]
+        lastActivityAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    WarmupPlanInput:
+      type: object
+      properties:
+        accountId:
+          type: integer
+        status:
+          type: string
+          enum: [draft, active, paused, completed]
+        totalDays:
+          type: integer
+        dailyLimitStart:
+          type: integer
+        dailyLimitEnd:
+          type: integer
+        growthType:
+          type: string
+          enum: [linear, exponential]
+        notes:
+          type: string
+
+    # ── PROXIES ───────────────────────────────────────────
+    Proxy:
+      type: object
+      required: [id, name, host, port, type, isActive, failCount, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        host:
+          type: string
+        port:
+          type: integer
+        type:
+          type: string
+          enum: [socks5, http, https]
+        username:
+          type: ["string", "null"]
+        password:
+          type: ["string", "null"]
+        assignedAccountId:
+          type: ["integer", "null"]
+        isActive:
+          type: boolean
+        lastCheckedAt:
+          type: ["string", "null"]
+        lastCheckStatus:
+          type: ["string", "null"]
+        responseTimeMs:
+          type: ["integer", "null"]
+        failCount:
+          type: integer
+        country:
+          type: ["string", "null"]
+        provider:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    ProxyInput:
+      type: object
+      properties:
+        name:
+          type: string
+        host:
+          type: string
+        port:
+          type: integer
+        type:
+          type: string
+          enum: [socks5, http, https]
+        username:
+          type: string
+        password:
+          type: string
+        assignedAccountId:
+          type: integer
+        isActive:
+          type: boolean
+        country:
+          type: string
+        provider:
+          type: string
+
+    ProxyTestResult:
+      type: object
+      required: [success, responseTimeMs, status]
+      properties:
+        success:
+          type: boolean
+        responseTimeMs:
+          type: integer
+        status:
+          type: string
+        error:
+          type: ["string", "null"]
+
+    # ── FLOOD EVENTS ──────────────────────────────────────
+    FloodEvent:
+      type: object
+      required: [id, accountId, waitSeconds, messagesSentBefore, severity, resolved, createdAt]
+      properties:
+        id:
+          type: integer
+        accountId:
+          type: integer
+        triggeredAt:
+          type: string
+        waitSeconds:
+          type: integer
+        messagesSentBefore:
+          type: integer
+        context:
+          type: ["string", "null"]
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+        resolved:
+          type: boolean
+        resolvedAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    FloodEventInput:
+      type: object
+      required: [accountId, waitSeconds]
+      properties:
+        accountId:
+          type: integer
+        waitSeconds:
+          type: integer
+        messagesSentBefore:
+          type: integer
+        context:
+          type: string
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+
+    FloodAccountStats:
+      type: object
+      required: [accountId, totalEvents, avgWaitSeconds, lastEventAt, riskLevel, predictedNextFlood]
+      properties:
+        accountId:
+          type: integer
+        totalEvents:
+          type: integer
+        avgWaitSeconds:
+          type: number
+        lastEventAt:
+          type: ["string", "null"]
+        riskLevel:
+          type: string
+          enum: [safe, caution, danger, critical]
+        predictedNextFlood:
+          type: ["string", "null"]
+
+    # ── CONVERSATION MEMORIES ─────────────────────────────
+    ConversationMemory:
+      type: object
+      required: [id, accountId, interestLevel, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        accountId:
+          type: integer
+        contactPhone:
+          type: ["string", "null"]
+        contactUsername:
+          type: ["string", "null"]
+        contactName:
+          type: ["string", "null"]
+        topics:
+          type: ["string", "null"]
+        lastMessage:
+          type: ["string", "null"]
+        lastMessageAt:
+          type: ["string", "null"]
+        interestLevel:
+          type: string
+          enum: [cold, warm, hot]
+        detectedLanguage:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        keyFacts:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    MemoryInput:
+      type: object
+      properties:
+        accountId:
+          type: integer
+        contactPhone:
+          type: string
+        contactUsername:
+          type: string
+        contactName:
+          type: string
+        topics:
+          type: string
+        lastMessage:
+          type: string
+        interestLevel:
+          type: string
+          enum: [cold, warm, hot]
+        detectedLanguage:
+          type: string
+        notes:
+          type: string
+        keyFacts:
+          type: string
+
+    # ── LEADS ─────────────────────────────────────────────
+    Lead:
+      type: object
+      required: [id, accountId, contactName, stage, messageCount, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        accountId:
+          type: integer
+        contactPhone:
+          type: ["string", "null"]
+        contactUsername:
+          type: ["string", "null"]
+        contactName:
+          type: string
+        stage:
+          type: string
+          enum: [cold, contacted, interested, negotiating, converted, lost]
+        campaignId:
+          type: ["integer", "null"]
+        sourceGroupId:
+          type: ["integer", "null"]
+        sourceGroupName:
+          type: ["string", "null"]
+        firstContactAt:
+          type: ["string", "null"]
+        lastContactAt:
+          type: ["string", "null"]
+        conversionAt:
+          type: ["string", "null"]
+        messageCount:
+          type: integer
+        tags:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        value:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    LeadInput:
+      type: object
+      properties:
+        accountId:
+          type: integer
+        contactPhone:
+          type: string
+        contactUsername:
+          type: string
+        contactName:
+          type: string
+        stage:
+          type: string
+          enum: [cold, contacted, interested, negotiating, converted, lost]
+        campaignId:
+          type: integer
+        sourceGroupId:
+          type: integer
+        sourceGroupName:
+          type: string
+        notes:
+          type: string
+        tags:
+          type: string
+        value:
+          type: integer
+
+    LeadFunnelStats:
+      type: object
+      required: [cold, contacted, interested, negotiating, converted, lost, total, conversionRate]
+      properties:
+        cold:
+          type: integer
+        contacted:
+          type: integer
+        interested:
+          type: integer
+        negotiating:
+          type: integer
+        converted:
+          type: integer
+        lost:
+          type: integer
+        total:
+          type: integer
+        conversionRate:
+          type: number
+
+    # ── A/B TESTS ─────────────────────────────────────────
+    AbTest:
+      type: object
+      required: [id, name, variantA, variantB, status, sentA, sentB, repliesA, repliesB, replyRateA, replyRateB, targetCount, confidenceThreshold, autoSelectWinner, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        campaignId:
+          type: ["integer", "null"]
+        variantA:
+          type: string
+        variantB:
+          type: string
+        status:
+          type: string
+          enum: [draft, active, completed]
+        winnerVariant:
+          type: ["string", "null"]
+        sentA:
+          type: integer
+        sentB:
+          type: integer
+        repliesA:
+          type: integer
+        repliesB:
+          type: integer
+        replyRateA:
+          type: number
+        replyRateB:
+          type: number
+        targetCount:
+          type: integer
+        confidenceThreshold:
+          type: number
+        autoSelectWinner:
+          type: integer
+        startedAt:
+          type: ["string", "null"]
+        completedAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    AbTestInput:
+      type: object
+      properties:
+        name:
+          type: string
+        campaignId:
+          type: integer
+        variantA:
+          type: string
+        variantB:
+          type: string
+        targetCount:
+          type: integer
+        confidenceThreshold:
+          type: number
+        autoSelectWinner:
+          type: integer
+
+    AbTestReplyInput:
+      type: object
+      required: [variant]
+      properties:
+        variant:
+          type: string
+          enum: [a, b]
+
+    # ── AUTO-JOIN TARGETS ─────────────────────────────────
+    AutoJoinTarget:
+      type: object
+      required: [id, accountId, keywords, targetType, status, dailyJoinLimit, joinedToday, totalJoined, maxTotal, scrapeMembers, minMemberCount, createdAt]
+      properties:
+        id:
+          type: integer
+        accountId:
+          type: integer
+        keywords:
+          type: string
+        targetType:
+          type: string
+          enum: [group, channel, both]
+        status:
+          type: string
+          enum: [active, paused, completed]
+        dailyJoinLimit:
+          type: integer
+        joinedToday:
+          type: integer
+        totalJoined:
+          type: integer
+        maxTotal:
+          type: integer
+        foundGroups:
+          type: ["string", "null"]
+        scrapeMembers:
+          type: boolean
+        minMemberCount:
+          type: integer
+        lastScanAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    AutoJoinTargetInput:
+      type: object
+      properties:
+        accountId:
+          type: integer
+        keywords:
+          type: string
+        targetType:
+          type: string
+          enum: [group, channel, both]
+        status:
+          type: string
+          enum: [active, paused, completed]
+        dailyJoinLimit:
+          type: integer
+        maxTotal:
+          type: integer
+        scrapeMembers:
+          type: boolean
+        minMemberCount:
+          type: integer
+
+    # ── ESCALATIONS ───────────────────────────────────────
+    Escalation:
+      type: object
+      required: [id, accountId, sentimentScore, reason, status, aiPaused, createdAt]
+      properties:
+        id:
+          type: integer
+        accountId:
+          type: integer
+        contactPhone:
+          type: ["string", "null"]
+        contactUsername:
+          type: ["string", "null"]
+        contactName:
+          type: ["string", "null"]
+        conversationSnippet:
+          type: ["string", "null"]
+        sentimentScore:
+          type: number
+        reason:
+          type: string
+          enum: [angry, suspicious, human_needed, spam_detected, other]
+        status:
+          type: string
+          enum: [pending, reviewed, resolved, ignored]
+        aiPaused:
+          type: integer
+        detectedLanguage:
+          type: ["string", "null"]
+        assignedTo:
+          type: ["string", "null"]
+        reviewNote:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        resolvedAt:
+          type: ["string", "null"]
+
+    EscalationInput:
+      type: object
+      properties:
+        accountId:
+          type: integer
+        contactPhone:
+          type: string
+        contactUsername:
+          type: string
+        contactName:
+          type: string
+        conversationSnippet:
+          type: string
+        sentimentScore:
+          type: number
+        reason:
+          type: string
+          enum: [angry, suspicious, human_needed, spam_detected, other]
+        status:
+          type: string
+          enum: [pending, reviewed, resolved, ignored]
+        aiPaused:
+          type: integer
+        detectedLanguage:
+          type: string
+        assignedTo:
+          type: string
+        reviewNote:
           type: string
 
     # ── APP SETTINGS ──────────────────────────────────────
