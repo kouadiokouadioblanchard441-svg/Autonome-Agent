@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import healthRouter from "./health";
 import accountsRouter from "./accounts";
 import groupsRouter from "./groups";
@@ -20,10 +20,24 @@ import leadsRouter from "./leads";
 import abTestsRouter from "./ab-tests";
 import autoJoinRouter from "./auto-join";
 import escalationsRouter from "./escalations";
+import authRouter from "./auth";
 
 const router: IRouter = Router();
 
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const admin = (req.session as any)?.admin;
+  if (!admin) {
+    res.status(401).json({ error: "Non authentifié — accès refusé" });
+    return;
+  }
+  next();
+}
+
 router.use(healthRouter);
+router.use(authRouter);
+
+router.use(requireAuth);
+
 router.use(accountsRouter);
 router.use(groupsRouter);
 router.use(channelsRouter);

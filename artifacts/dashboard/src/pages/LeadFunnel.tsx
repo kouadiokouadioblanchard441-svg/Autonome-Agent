@@ -66,7 +66,7 @@ export default function LeadFunnel() {
       {stats && (
         <div className="grid grid-cols-3 sm:grid-cols-7 gap-2">
           {STAGES.map(s => {
-            const count = (stats as Record<string, number>)[s.id] ?? 0;
+            const count = (stats as unknown as Record<string, number>)[s.id] ?? 0;
             return (
               <div key={s.id} className={`p-3 rounded-lg border text-center ${s.bg}`}>
                 <div className="text-lg">{s.emoji}</div>

@@ -123,7 +123,7 @@ export default function ProxyManager() {
                       <td className="px-4 py-3 text-muted-foreground">
                         {account ? (account.displayName ?? account.username) : <span className="text-zinc-600">Non assigné</span>}
                       </td>
-                      <td className="px-4 py-3"><StatusBadge status={proxy.lastCheckStatus} /></td>
+                      <td className="px-4 py-3"><StatusBadge status={proxy.lastCheckStatus ?? null} /></td>
                       <td className="px-4 py-3 font-mono text-xs">
                         {proxy.responseTimeMs ? `${proxy.responseTimeMs}ms` : "—"}
                       </td>

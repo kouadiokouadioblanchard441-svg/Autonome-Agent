@@ -138,7 +138,7 @@ export default function HumanDelay() {
   const handlePreview = () => {
     previewTiming.mutate(
       { data: { ...watchedValues, sampleMessage: "Hello! Could you tell me more about the project timeline and what deliverables you need?" } },
-      { onSuccess: (data) => setPreviewResult(data as Record<string, number | boolean>) }
+      { onSuccess: (data) => setPreviewResult(data as unknown as Record<string, number | boolean>) }
     );
   };
 

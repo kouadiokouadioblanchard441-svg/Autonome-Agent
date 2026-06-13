@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <!-- Outer ring -->
+  <circle cx="60" cy="60" r="56" stroke="url(#ring)" stroke-width="2.5" stroke-dasharray="8 4"/>
+  <!-- Inner glow circle -->
+  <circle cx="60" cy="60" r="44" fill="url(#bg)" opacity="0.9"/>
+  <!-- Circuit nodes -->
+  <circle cx="60" cy="16" r="4" fill="#00E5FF" opacity="0.8"/>
+  <circle cx="104" cy="60" r="4" fill="#00E5FF" opacity="0.6"/>
+  <circle cx="60" cy="104" r="4" fill="#00E5FF" opacity="0.6"/>
+  <circle cx="16" cy="60" r="4" fill="#00E5FF" opacity="0.6"/>
+  <!-- Circuit lines -->
+  <line x1="60" y1="20" x2="60" y2="36" stroke="#00E5FF" stroke-width="1.5" opacity="0.4"/>
+  <line x1="100" y1="60" x2="84" y2="60" stroke="#00E5FF" stroke-width="1.5" opacity="0.4"/>
+  <line x1="60" y1="100" x2="60" y2="84" stroke="#00E5FF" stroke-width="1.5" opacity="0.4"/>
+  <line x1="20" y1="60" x2="36" y2="60" stroke="#00E5FF" stroke-width="1.5" opacity="0.4"/>
+  <!-- Brain / AI hexagon center -->
+  <polygon points="60,36 80,47 80,69 60,80 40,69 40,47" fill="url(#hex)" stroke="#00E5FF" stroke-width="1.5" opacity="0.95"/>
+  <!-- N letter (Nexus) -->
+  <text x="60" y="67" text-anchor="middle" font-family="'Arial Black', Arial, sans-serif" font-weight="900" font-size="26" fill="white" letter-spacing="-1">N</text>
+  <!-- Small AI dots inside hex -->
+  <circle cx="46" cy="52" r="2" fill="#00E5FF" opacity="0.6"/>
+  <circle cx="74" cy="52" r="2" fill="#00E5FF" opacity="0.6"/>
+  <circle cx="46" cy="68" r="2" fill="#00E5FF" opacity="0.4"/>
+  <circle cx="74" cy="68" r="2" fill="#00E5FF" opacity="0.4"/>
+  <!-- Gradients -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="120" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0d1b2a"/>
+      <stop offset="100%" stop-color="#0a1628"/>
+    </linearGradient>
+    <linearGradient id="hex" x1="40" y1="36" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#003d6b"/>
+      <stop offset="100%" stop-color="#001f3f"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="120" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00E5FF"/>
+      <stop offset="50%" stop-color="#0080ff"/>
+      <stop offset="100%" stop-color="#00E5FF"/>
+    </linearGradient>
+  </defs>
+</svg>

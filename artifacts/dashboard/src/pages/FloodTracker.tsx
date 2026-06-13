@@ -120,7 +120,7 @@ export default function FloodTracker() {
                 {events.map(ev => (
                   <tr key={ev.id} className={`border-b border-border/20 hover:bg-muted/10 ${ev.resolved ? "opacity-60" : ""}`}>
                     <td className="px-4 py-3 font-medium">{accountName(ev.accountId)}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{new Date(ev.triggeredAt).toLocaleString("fr-FR")}</td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">{new Date(String(ev.triggeredAt)).toLocaleString("fr-FR")}</td>
                     <td className="px-4 py-3 font-mono font-bold text-orange-400">{ev.waitSeconds}s</td>
                     <td className="px-4 py-3 font-mono">{ev.messagesSentBefore}</td>
                     <td className="px-4 py-3 text-xs text-muted-foreground truncate max-w-24">{ev.context ?? "—"}</td>

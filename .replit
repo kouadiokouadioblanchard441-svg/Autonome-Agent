@@ -34,3 +34,10 @@ externalPort = 3000
 [nix]
 channel = "stable-25_05"
 packages = ["libxcrypt", "openssl", "postgresql"]
+
+[userenv]
+
+[userenv.shared]
+ADMIN_EMAIL = "simixsupport@gmail.com"
+ADMIN_PASSWORD_HASH = "$2b$12$zVOi/.Rt7hDx6jMCm6R/neZxFNcToFrr275XeEhEtJmqtcr3xQQq2"
+ADMIN_NAME = "Nexus AI Admin"

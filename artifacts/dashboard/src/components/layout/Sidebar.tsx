@@ -1,11 +1,13 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 import {
   LayoutDashboard, Users, MessageSquare, Megaphone, CalendarClock,
   BrainCircuit, ShieldAlert, BarChart3, Bell, MessageCircle, Hash,
   Timer, KeyRound, Flame, Shield, Zap, Brain, Target, FlaskConical,
-  Search, AlertTriangle,
+  Search, AlertTriangle, LogOut,
 } from "lucide-react";
+import nexusLogo from "@/assets/nexus-logo.svg";
 
 const NAV_GROUPS = [
   {
@@ -58,15 +60,22 @@ const NAV_GROUPS = [
 
 export function Sidebar() {
   const [location] = useLocation();
+  const { admin, logout } = useAuth();
 
   return (
     <div className="w-64 border-r border-border bg-card flex flex-col h-full sticky top-0">
-      <div className="h-16 flex items-center px-6 border-b border-border shrink-0">
-        <div className="flex items-center gap-2">
-          <BrainCircuit className="w-6 h-6 text-primary" />
-          <span className="font-bold text-lg tracking-tight uppercase">Nexus AI</span>
+      {/* Logo */}
+      <div className="h-16 flex items-center px-5 border-b border-border shrink-0 gap-3">
+        <img src={nexusLogo} alt="Nexus AI" className="w-8 h-8 shrink-0" />
+        <div>
+          <span className="font-black text-base tracking-widest uppercase text-white">
+            NEXUS<span className="text-cyan-400"> AI</span>
+          </span>
+          <p className="text-[9px] text-cyan-400/50 font-mono tracking-[0.2em] uppercase -mt-0.5">Control Panel</p>
         </div>
       </div>
+
+      {/* Nav */}
       <div className="flex-1 overflow-y-auto py-3">
         <nav className="space-y-4 px-3">
           {NAV_GROUPS.map((group) => (
@@ -100,8 +109,31 @@ export function Sidebar() {
           ))}
         </nav>
       </div>
-      <div className="p-4 border-t border-border text-xs text-muted-foreground shrink-0">
-        SYSTEM STATUS: <span className="text-primary font-bold">ONLINE</span>
+
+      {/* Admin footer */}
+      <div className="p-3 border-t border-border shrink-0 space-y-2">
+        <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-muted/20">
+          <div className="w-7 h-7 rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center shrink-0">
+            <span className="text-xs font-bold text-cyan-400">
+              {admin?.name?.charAt(0).toUpperCase() ?? "A"}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-foreground truncate">{admin?.name ?? "Admin"}</p>
+            <p className="text-[10px] text-muted-foreground truncate">{admin?.email ?? ""}</p>
+          </div>
+          <button
+            onClick={() => logout()}
+            title="Déconnexion"
+            className="text-muted-foreground hover:text-red-400 transition-colors p-1 rounded"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        <div className="px-2 text-[10px] text-muted-foreground flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          SYSTEM STATUS: <span className="text-primary font-bold">ONLINE</span>
+        </div>
       </div>
     </div>
   );
