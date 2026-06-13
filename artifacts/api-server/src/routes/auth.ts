@@ -1,5 +1,8 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
+import { db } from "@workspace/db";
+import { clientPortals } from "@workspace/db/schema";
+import { eq } from "drizzle-orm";
 
 const router = Router();
 
@@ -15,16 +18,38 @@ router.post("/auth/login", async (req, res) => {
     return;
   }
 
-  const emailMatch = email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase().trim();
-  const passMatch = ADMIN_PASSWORD_HASH ? await bcrypt.compare(password, ADMIN_PASSWORD_HASH) : false;
-
-  if (!emailMatch || !passMatch) {
-    res.status(401).json({ error: "Identifiants invalides" });
-    return;
+  // Check admin first
+  const emailNorm = email.toLowerCase().trim();
+  const isAdminEmail = emailNorm === ADMIN_EMAIL.toLowerCase().trim();
+  if (isAdminEmail && ADMIN_PASSWORD_HASH) {
+    const passMatch = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
+    if (passMatch) {
+      (req.session as any).role = "admin";
+      (req.session as any).admin = { email: ADMIN_EMAIL, name: ADMIN_NAME, loggedInAt: new Date().toISOString() };
+      res.json({ ok: true, role: "admin", user: { email: ADMIN_EMAIL, name: ADMIN_NAME } });
+      return;
+    }
   }
 
-  (req.session as any).admin = { email: ADMIN_EMAIL, name: ADMIN_NAME, loggedInAt: new Date().toISOString() };
-  res.json({ ok: true, admin: { email: ADMIN_EMAIL, name: ADMIN_NAME } });
+  // Check client portals
+  try {
+    const [portal] = await db.select().from(clientPortals).where(eq(clientPortals.clientEmail, emailNorm));
+    if (!portal || !portal.isActive) {
+      res.status(401).json({ error: "Identifiants invalides" });
+      return;
+    }
+    const passMatch = await bcrypt.compare(password, portal.passwordHash);
+    if (!passMatch) {
+      res.status(401).json({ error: "Identifiants invalides" });
+      return;
+    }
+    await db.update(clientPortals).set({ lastLoginAt: new Date() }).where(eq(clientPortals.id, portal.id));
+    (req.session as any).role = "client";
+    (req.session as any).client = { id: portal.id, email: portal.clientEmail, name: portal.clientName, accountId: portal.accountId };
+    res.json({ ok: true, role: "client", user: { email: portal.clientEmail, name: portal.clientName, accountId: portal.accountId } });
+  } catch {
+    res.status(500).json({ error: "Erreur serveur" });
+  }
 });
 
 router.post("/auth/logout", (req, res) => {
@@ -35,12 +60,16 @@ router.post("/auth/logout", (req, res) => {
 });
 
 router.get("/auth/me", (req, res) => {
-  const admin = (req.session as any)?.admin;
-  if (!admin) {
-    res.status(401).json({ error: "Non authentifié" });
+  const role = (req.session as any)?.role;
+  if (role === "admin") {
+    res.json({ role: "admin", user: (req.session as any).admin });
     return;
   }
-  res.json({ admin });
+  if (role === "client") {
+    res.json({ role: "client", user: (req.session as any).client });
+    return;
+  }
+  res.status(401).json({ error: "Non authentifié" });
 });
 
 export default router;

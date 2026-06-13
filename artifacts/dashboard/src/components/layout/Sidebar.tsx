@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, MessageSquare, Megaphone, CalendarClock,
   BrainCircuit, ShieldAlert, BarChart3, Bell, MessageCircle, Hash,
   Timer, KeyRound, Flame, Shield, Zap, Brain, Target, FlaskConical,
-  Search, AlertTriangle, LogOut,
+  Search, AlertTriangle, LogOut, UserCog,
 } from "lucide-react";
 import nexusLogo from "@/assets/nexus-logo.svg";
 
@@ -50,6 +50,7 @@ const NAV_GROUPS = [
   {
     label: "Système",
     items: [
+      { href: "/clients", label: "Mes Clients", icon: UserCog },
       { href: "/security", label: "Security", icon: ShieldAlert },
       { href: "/analytics", label: "Analytics", icon: BarChart3 },
       { href: "/notifications", label: "Notifications", icon: Bell },
@@ -60,7 +61,7 @@ const NAV_GROUPS = [
 
 export function Sidebar() {
   const [location] = useLocation();
-  const { admin, logout } = useAuth();
+  const { user, logout } = useAuth();
 
   return (
     <div className="w-64 border-r border-border bg-card flex flex-col h-full sticky top-0">
@@ -71,7 +72,7 @@ export function Sidebar() {
           <span className="font-black text-base tracking-widest uppercase text-white">
             NEXUS<span className="text-cyan-400"> AI</span>
           </span>
-          <p className="text-[9px] text-cyan-400/50 font-mono tracking-[0.2em] uppercase -mt-0.5">Control Panel</p>
+          <p className="text-[9px] text-cyan-400/50 font-mono tracking-[0.2em] uppercase -mt-0.5">Admin Panel</p>
         </div>
       </div>
 
@@ -97,7 +98,6 @@ export function Sidebar() {
                           ? "bg-primary/10 text-primary"
                           : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                       )}
-                      data-testid={`link-${item.href.replace("/", "").replace("-", "")}`}
                     >
                       <Icon className="w-4 h-4 shrink-0" />
                       {item.label}
@@ -115,12 +115,12 @@ export function Sidebar() {
         <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-muted/20">
           <div className="w-7 h-7 rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center shrink-0">
             <span className="text-xs font-bold text-cyan-400">
-              {admin?.name?.charAt(0).toUpperCase() ?? "A"}
+              {user?.name?.charAt(0).toUpperCase() ?? "A"}
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-foreground truncate">{admin?.name ?? "Admin"}</p>
-            <p className="text-[10px] text-muted-foreground truncate">{admin?.email ?? ""}</p>
+            <p className="text-xs font-semibold text-foreground truncate">{user?.name ?? "Admin"}</p>
+            <p className="text-[10px] text-muted-foreground truncate">{user?.email ?? ""}</p>
           </div>
           <button
             onClick={() => logout()}

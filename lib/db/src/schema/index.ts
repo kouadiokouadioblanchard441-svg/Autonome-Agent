@@ -17,3 +17,4 @@ export * from "./leads";
 export * from "./ab_tests";
 export * from "./auto_join_targets";
 export * from "./escalations";
+export * from "./client_portals";

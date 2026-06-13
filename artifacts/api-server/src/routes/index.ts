@@ -21,22 +21,28 @@ import abTestsRouter from "./ab-tests";
 import autoJoinRouter from "./auto-join";
 import escalationsRouter from "./escalations";
 import authRouter from "./auth";
+import clientPortalsRouter from "./client-portals";
 
 const router: IRouter = Router();
 
-function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const admin = (req.session as any)?.admin;
-  if (!admin) {
+function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  const role = (req.session as any)?.role;
+  if (role !== "admin") {
     res.status(401).json({ error: "Non authentifié — accès refusé" });
     return;
   }
   next();
 }
 
+// Public routes
 router.use(healthRouter);
 router.use(authRouter);
 
-router.use(requireAuth);
+// Client-facing data route (has its own session check inside)
+router.get("/client-portal/overview", (req, res, next) => clientPortalsRouter(req, res, next));
+
+// Admin-only routes
+router.use(requireAdmin);
 
 router.use(accountsRouter);
 router.use(groupsRouter);
@@ -58,5 +64,6 @@ router.use(leadsRouter);
 router.use(abTestsRouter);
 router.use(autoJoinRouter);
 router.use(escalationsRouter);
+router.use(clientPortalsRouter);
 
 export default router;

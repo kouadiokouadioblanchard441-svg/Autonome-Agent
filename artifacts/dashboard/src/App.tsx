@@ -1,12 +1,12 @@
-import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useEffect } from "react";
 import NotFound from "@/pages/not-found";
 import { Layout } from "@/components/layout/Layout";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import Login from "@/pages/Login";
+import ClientPortal from "@/pages/ClientPortal";
 
 import Dashboard from "@/pages/Dashboard";
 import Accounts from "@/pages/Accounts";
@@ -29,41 +29,15 @@ import LeadFunnel from "@/pages/LeadFunnel";
 import ABTesting from "@/pages/ABTesting";
 import AutoJoin from "@/pages/AutoJoin";
 import Escalations from "@/pages/Escalations";
+import ClientsManager from "@/pages/ClientsManager";
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: {
-      retry: (count, err: any) => err?.status !== 401 && count < 2,
-    },
+    queries: { retry: (count, err: any) => err?.status !== 401 && count < 2 },
   },
 });
 
-function AuthGate() {
-  const { admin, loading } = useAuth();
-  const [location, navigate] = useLocation();
-
-  useEffect(() => {
-    if (!loading) {
-      if (!admin && location !== "/login") navigate("/login");
-      if (admin && location === "/login") navigate("/");
-    }
-  }, [admin, loading, location, navigate]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#030712] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-2 border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin" />
-          <span className="text-sm text-zinc-500 font-mono">Vérification...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (!admin) {
-    return <Login />;
-  }
-
+function AdminPanel() {
   return (
     <Layout>
       <Switch>
@@ -88,10 +62,30 @@ function AuthGate() {
         <Route path="/ab-testing" component={ABTesting} />
         <Route path="/auto-join" component={AutoJoin} />
         <Route path="/escalations" component={Escalations} />
+        <Route path="/clients" component={ClientsManager} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
   );
+}
+
+function AppRouter() {
+  const { role, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#030712] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-2 border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin" />
+          <span className="text-sm text-zinc-500 font-mono">Vérification...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (role === "admin") return <AdminPanel />;
+  if (role === "client") return <ClientPortal />;
+  return <Login />;
 }
 
 function App() {
@@ -100,7 +94,7 @@ function App() {
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
           <AuthProvider>
-            <AuthGate />
+            <AppRouter />
           </AuthProvider>
         </WouterRouter>
         <Toaster />
