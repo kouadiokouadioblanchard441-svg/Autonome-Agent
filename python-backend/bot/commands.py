@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+import asyncio
 from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
@@ -1034,3 +1035,225 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=back_to_menu_kb()
             )
+
+    elif data.startswith("postnow_"):
+        parts = data.split("_")
+        acc_id = int(parts[1])
+        chat_id = parts[2]
+        try:
+            from .autonomous import trigger_post_now
+            await trigger_post_now(acc_id, chat_id, with_image=True)
+            await query.edit_message_text(
+                "✅ Post généré et envoyé avec succès!",
+                reply_markup=back_to_menu_kb()
+            )
+        except Exception as e:
+            await query.edit_message_text(
+                f"❌ Erreur: {e}\n\nVéifie que le compte est connecté et l'engine actif.",
+                reply_markup=back_to_menu_kb()
+            )
+
+    elif data.startswith("autopost_toggle_"):
+        chan_id = data.split("_")[2]
+        row = await db_fetchrow("SELECT is_auto_post, title FROM telegram_channels WHERE telegram_id = $1", chan_id)
+        if row:
+            new_val = not row["is_auto_post"]
+            await db_execute("UPDATE telegram_channels SET is_auto_post = $1 WHERE telegram_id = $2", new_val, chan_id)
+            state = "✅ activé" if new_val else "⏹ désactivé"
+            await query.edit_message_text(
+                f"📢 *{row['title']}*\n\nAuto-post {state}.",
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=back_to_menu_kb()
+            )
+
+    elif data.startswith("autoreply_toggle_"):
+        grp_id = data.split("_")[2]
+        row = await db_fetchrow("SELECT is_auto_reply, title FROM telegram_groups WHERE telegram_id = $1", grp_id)
+        if row:
+            new_val = not row["is_auto_reply"]
+            await db_execute("UPDATE telegram_groups SET is_auto_reply = $1 WHERE telegram_id = $2", new_val, grp_id)
+            state = "✅ activé" if new_val else "⏹ désactivé"
+            await query.edit_message_text(
+                f"👥 *{row['title']}*\n\nAuto-réponse {state}.",
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=back_to_menu_kb()
+            )
+
+
+# ── /autonomous ────────────────────────────────────────────────────────────────
+
+@admin_only
+async def cmd_autonomous(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """Dashboard de l'engine autonome."""
+    accounts = await db_fetch(
+        """SELECT id, phone_number, status, health_score, is_connected
+           FROM telegram_accounts WHERE status != 'banned' ORDER BY id"""
+    )
+    channels = await db_fetch(
+        "SELECT telegram_id, title, is_auto_post, account_id FROM telegram_channels ORDER BY title"
+    )
+    groups = await db_fetch(
+        "SELECT telegram_id, title, is_auto_reply, account_id FROM telegram_groups ORDER BY title"
+    )
+
+    lines = ["🤖 *Engine Autonome — Vue d'ensemble*\n"]
+
+    # Accounts
+    lines.append(f"👤 *Comptes actifs: {len(accounts)}*")
+    for a in accounts[:5]:
+        connected = "🟢" if a["is_connected"] else "🔴"
+        lines.append(f"  {connected} #{a['id']} `{a['phone_number']}` — {fmt_health(a['health_score'])}")
+    if len(accounts) > 5:
+        lines.append(f"  _...et {len(accounts)-5} autres_")
+
+    # Channels auto-post
+    auto_channels = [c for c in channels if c["is_auto_post"]]
+    lines.append(f"\n📢 *Canaux en auto-post: {len(auto_channels)}/{len(channels)}*")
+    for c in auto_channels[:5]:
+        lines.append(f"  ✅ {c['title']}")
+
+    # Groups auto-reply
+    auto_groups = [g for g in groups if g["is_auto_reply"]]
+    lines.append(f"\n👥 *Groupes en auto-réponse: {len(auto_groups)}/{len(groups)}*")
+    for g in auto_groups[:5]:
+        lines.append(f"  ✅ {g['title']}")
+
+    lines.append("\n📌 Commandes disponibles:")
+    lines.append("`/post_now <account_id> <chat_id>` — Forcer un post maintenant")
+    lines.append("`/autopost <channel_tg_id>` — Toggle auto-post canal")
+    lines.append("`/autoreply <group_tg_id>` — Toggle auto-réponse groupe")
+    lines.append("`/generate_image <description>` — Générer une image IA")
+
+    await update.message.reply_text(
+        "\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb()
+    )
+
+
+@admin_only
+async def cmd_post_now(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """Forcer un post IA immédiat: /post_now <account_id> <chat_id>"""
+    args = ctx.args or []
+    if len(args) < 2:
+        await update.message.reply_text(
+            "❌ Usage: `/post_now <account_id> <chat_id>`\n\nExemple: `/post_now 1 -1001234567890`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    try:
+        acc_id  = int(args[0])
+        chat_id = args[1]
+    except ValueError:
+        await update.message.reply_text("❌ account_id doit être un nombre.")
+        return
+
+    with_image = "--no-image" not in (ctx.args or [])
+    with_video = "--video" in (ctx.args or [])
+
+    msg = await update.message.reply_text("⏳ Génération du post en cours...")
+    try:
+        from .autonomous import trigger_post_now
+        await trigger_post_now(acc_id, chat_id, with_image=with_image, with_video=with_video)
+        await msg.edit_text(
+            f"✅ Post envoyé!\n📢 Chat: `{chat_id}`\n🖼 Image: {'oui' if with_image else 'non'}\n📹 Vidéo: {'oui' if with_video else 'non'}",
+            parse_mode=ParseMode.MARKDOWN
+        )
+    except Exception as e:
+        await msg.edit_text(f"❌ Erreur: `{e}`\n\nVérifie que le compte est connecté (engine actif).", parse_mode=ParseMode.MARKDOWN)
+
+
+@admin_only
+async def cmd_autopost(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """Toggle auto-post sur un canal: /autopost <channel_tg_id>"""
+    args = ctx.args or []
+    if not args:
+        # List all channels with their state
+        channels = await db_fetch(
+            "SELECT telegram_id, title, is_auto_post FROM telegram_channels ORDER BY title"
+        )
+        if not channels:
+            await update.message.reply_text(
+                "📢 Aucun canal enregistré.\nLes canaux apparaissent automatiquement quand un compte les rejoint.",
+                reply_markup=back_to_menu_kb()
+            )
+            return
+        lines = ["📢 *Auto-post par canal* (toggle: `/autopost <id>`)\n"]
+        for c in channels:
+            state = "✅" if c["is_auto_post"] else "⏹"
+            lines.append(f"{state} `{c['telegram_id']}` — {c['title']}")
+        await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+        return
+
+    tg_id = args[0]
+    row = await db_fetchrow("SELECT is_auto_post, title FROM telegram_channels WHERE telegram_id = $1", tg_id)
+    if not row:
+        await update.message.reply_text(f"❌ Canal `{tg_id}` non trouvé.", parse_mode=ParseMode.MARKDOWN)
+        return
+    new_val = not row["is_auto_post"]
+    await db_execute("UPDATE telegram_channels SET is_auto_post = $1 WHERE telegram_id = $2", new_val, tg_id)
+    state = "✅ activé" if new_val else "⏹ désactivé"
+    await update.message.reply_text(
+        f"📢 *{row['title']}*\n\nAuto-post {state}.\nL'engine publiera automatiquement toutes les 1–4h.",
+        parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb()
+    )
+
+
+@admin_only
+async def cmd_autoreply(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """Toggle auto-réponse sur un groupe: /autoreply <group_tg_id>"""
+    args = ctx.args or []
+    if not args:
+        groups = await db_fetch(
+            "SELECT telegram_id, title, is_auto_reply FROM telegram_groups ORDER BY title"
+        )
+        if not groups:
+            await update.message.reply_text(
+                "👥 Aucun groupe enregistré.\nLes groupes apparaissent automatiquement quand un compte les rejoint.",
+                reply_markup=back_to_menu_kb()
+            )
+            return
+        lines = ["👥 *Auto-réponse par groupe* (toggle: `/autoreply <id>`)\n"]
+        for g in groups:
+            state = "✅" if g["is_auto_reply"] else "⏹"
+            lines.append(f"{state} `{g['telegram_id']}` — {g['title']}")
+        await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+        return
+
+    tg_id = args[0]
+    row = await db_fetchrow("SELECT is_auto_reply, title FROM telegram_groups WHERE telegram_id = $1", tg_id)
+    if not row:
+        await update.message.reply_text(f"❌ Groupe `{tg_id}` non trouvé.", parse_mode=ParseMode.MARKDOWN)
+        return
+    new_val = not row["is_auto_reply"]
+    await db_execute("UPDATE telegram_groups SET is_auto_reply = $1 WHERE telegram_id = $2", new_val, tg_id)
+    state = "✅ activé" if new_val else "⏹ désactivé"
+    await update.message.reply_text(
+        f"👥 *{row['title']}*\n\nAuto-réponse {state}.\nLe bot répondra aux mentions dans ce groupe.",
+        parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb()
+    )
+
+
+@admin_only
+async def cmd_generate_image(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """Générer une image IA: /generate_image <description>"""
+    args = ctx.args or []
+    if not args:
+        await update.message.reply_text(
+            "❌ Usage: `/generate_image <description>`\n\nExemple:\n`/generate_image Un coucher de soleil sur Paris avec des reflets dorés`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    prompt = " ".join(args)
+    msg = await update.message.reply_text(f"🎨 Génération en cours...\n`{prompt}`", parse_mode=ParseMode.MARKDOWN)
+
+    try:
+        from .content_gen import generate_image
+        img_bytes = await generate_image(prompt)
+        if img_bytes:
+            await update.message.reply_photo(photo=img_bytes, caption=f"🎨 *Image générée*\n\n{prompt}", parse_mode=ParseMode.MARKDOWN)
+            await msg.delete()
+        else:
+            await msg.edit_text("❌ Génération d'image échouée. Vérifiez OPENAI_API_KEY.")
+    except Exception as e:
+        await msg.edit_text(f"❌ Erreur: `{e}`", parse_mode=ParseMode.MARKDOWN)

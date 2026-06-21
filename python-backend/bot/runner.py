@@ -17,6 +17,8 @@ from .commands import (
     cmd_escalations, cmd_resolve_escalation,
     cmd_proxies, cmd_schedules, cmd_warmup,
     cmd_memories, cmd_settings, cmd_help,
+    # Autonomous engine commands
+    cmd_autonomous, cmd_post_now, cmd_autopost, cmd_autoreply, cmd_generate_image,
     handle_callback,
 )
 
@@ -56,6 +58,12 @@ COMMANDS = [
     BotCommand("memories", "Mémoires conversationnelles"),
     BotCommand("settings", "Paramètres système"),
     BotCommand("help", "Toutes les commandes"),
+    # Autonomous engine
+    BotCommand("autonomous", "Dashboard engine autonome"),
+    BotCommand("post_now", "Forcer un post IA: /post_now <acc_id> <chat_id>"),
+    BotCommand("autopost", "Toggle auto-post canal: /autopost <channel_id>"),
+    BotCommand("autoreply", "Toggle auto-réponse groupe: /autoreply <group_id>"),
+    BotCommand("generate_image", "Générer une image IA: /generate_image <description>"),
 ]
 
 
@@ -105,6 +113,13 @@ async def build_app() -> Application:
     app.add_handler(CommandHandler("memories", cmd_memories))
     app.add_handler(CommandHandler("settings", cmd_settings))
     app.add_handler(CommandHandler("help", cmd_help))
+
+    # Autonomous engine commands
+    app.add_handler(CommandHandler("autonomous", cmd_autonomous))
+    app.add_handler(CommandHandler("post_now", cmd_post_now))
+    app.add_handler(CommandHandler("autopost", cmd_autopost))
+    app.add_handler(CommandHandler("autoreply", cmd_autoreply))
+    app.add_handler(CommandHandler("generate_image", cmd_generate_image))
 
     app.add_handler(CallbackQueryHandler(handle_callback))
 

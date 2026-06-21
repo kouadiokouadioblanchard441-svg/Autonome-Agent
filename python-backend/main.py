@@ -49,17 +49,21 @@ db_pool: asyncpg.Pool | None = None
 _bot_stop_event: asyncio.Event | None = None
 _bot_task: asyncio.Task | None = None
 _notif_task: asyncio.Task | None = None
+_auto_task: asyncio.Task | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global db_pool, _bot_stop_event, _bot_task, _notif_task
+    global db_pool, _bot_stop_event, _bot_task, _notif_task, _auto_task
     if DATABASE_URL:
         try:
-            db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10, ssl="require")
+            db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10, ssl="require", statement_cache_size=0)
             logger.info("Database pool created")
         except Exception as e:
             logger.error(f"Failed to create DB pool: {e}")
+
+    # Shared stop event for all background services
+    _bot_stop_event = asyncio.Event()
 
     # Start Telegram command bot + notification loop
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -67,13 +71,10 @@ async def lifespan(app: FastAPI):
         try:
             from bot.runner import run_bot_polling, build_app
             from bot.notifications import notification_loop
-            _bot_stop_event = asyncio.Event()
             _bot_task = asyncio.create_task(run_bot_polling(_bot_stop_event))
             logger.info("🤖 Telegram command bot started")
 
-            # Start notification loop once DB is ready
             if db_pool:
-                # Build a lightweight bot instance just for sending notifications
                 _notif_app = await build_app()
                 await _notif_app.initialize()
                 _notif_task = asyncio.create_task(
@@ -83,12 +84,30 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"Failed to start command bot: {e}")
 
+    # Start autonomous engine for all connected accounts
+    if TELETHON_AVAILABLE and API_ID and API_HASH and db_pool:
+        try:
+            from bot.autonomous import start_all_engines
+            _auto_task = asyncio.create_task(
+                start_all_engines(db_pool, _bot_stop_event)
+            )
+            logger.info("🚀 Autonomous engine started")
+        except Exception as e:
+            logger.error(f"Failed to start autonomous engine: {e}")
+
     yield
 
-    # Shutdown bot + notifications
+    # Graceful shutdown
     if _bot_stop_event:
         _bot_stop_event.set()
-    for task in [_bot_task, _notif_task]:
+
+    try:
+        from bot.autonomous import stop_all_engines
+        await stop_all_engines()
+    except Exception:
+        pass
+
+    for task in [_bot_task, _notif_task, _auto_task]:
         if task:
             try:
                 await asyncio.wait_for(task, timeout=5)
