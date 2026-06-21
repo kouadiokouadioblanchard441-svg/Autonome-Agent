@@ -11,6 +11,27 @@ env = { "CI" = "true" }
 [workflows]
 runButton = "Project"
 
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Python Telethon Engine"
+
+[[workflows.workflow]]
+name = "Python Telethon Engine"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "uv run python python-backend/main.py"
+waitForPort = 8090
+
+[workflows.workflow.metadata]
+outputType = "console"
+
 [agent]
 stack = "PNPM_WORKSPACE"
 expertMode = true
@@ -32,6 +53,10 @@ localPort = 8082
 externalPort = 3001
 
 [[ports]]
+localPort = 8090
+externalPort = 3003
+
+[[ports]]
 localPort = 23183
 externalPort = 3000
 
@@ -43,5 +68,5 @@ packages = ["libxcrypt", "openssl", "postgresql"]
 
 [userenv.shared]
 ADMIN_EMAIL = "simixsupport@gmail.com"
-ADMIN_PASSWORD_HASH = "$2b$12$zVOi/.Rt7hDx6jMCm6R/neZxFNcToFrr275XeEhEtJmqtcr3xQQq2"
+ADMIN_PASSWORD_HASH = "$2b$12$xol5WiE87xNp8I5OqSEeUeYRbnb/0IyJJaul5QFR9hgSH0F6Bw4t."
 ADMIN_NAME = "Nexus AI Admin"
