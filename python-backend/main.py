@@ -46,16 +46,42 @@ active_clients: dict[int, Any] = {}
 db_pool: asyncpg.Pool | None = None
 
 
+_bot_stop_event: asyncio.Event | None = None
+_bot_task: asyncio.Task | None = None
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global db_pool
+    global db_pool, _bot_stop_event, _bot_task
     if DATABASE_URL:
         try:
-            db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10)
+            db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10, ssl="require")
             logger.info("Database pool created")
         except Exception as e:
             logger.error(f"Failed to create DB pool: {e}")
+
+    # Start Telegram command bot
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    if bot_token:
+        try:
+            from bot.runner import run_bot_polling
+            _bot_stop_event = asyncio.Event()
+            _bot_task = asyncio.create_task(run_bot_polling(_bot_stop_event))
+            logger.info("🤖 Telegram command bot started")
+        except Exception as e:
+            logger.error(f"Failed to start command bot: {e}")
+
     yield
+
+    # Shutdown bot
+    if _bot_stop_event:
+        _bot_stop_event.set()
+    if _bot_task:
+        try:
+            await asyncio.wait_for(_bot_task, timeout=5)
+        except Exception:
+            pass
+
     if db_pool:
         await db_pool.close()
     for client in active_clients.values():
@@ -459,6 +485,19 @@ async def get_anti_ban_status():
             "Reduce message frequency" if floodwaits > 2 else None,
             "Review at-risk accounts" if at_risk else None,
         ],
+    }
+
+
+@app.get("/telegram/bot-status")
+async def get_bot_status():
+    """Check command bot status."""
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    admin_id = os.getenv("ADMIN_TELEGRAM_ID")
+    return {
+        "bot_configured": bool(bot_token),
+        "admin_id_set": bool(admin_id),
+        "bot_running": _bot_task is not None and not _bot_task.done(),
+        "commands_count": 30,
     }
 
 

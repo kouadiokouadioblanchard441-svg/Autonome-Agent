@@ -1,0 +1,1036 @@
+from __future__ import annotations
+import logging
+from datetime import datetime
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
+
+from .utils import (
+    db_fetch, db_fetchrow, db_fetchval, db_execute,
+    fmt_status, fmt_health, chunk_text, is_admin
+)
+from .keyboards import (
+    main_menu_kb, accounts_kb, account_detail_kb, campaigns_kb,
+    campaign_detail_kb, security_kb, system_kb, ai_menu_kb,
+    leads_kb, back_to_menu_kb
+)
+
+logger = logging.getLogger(__name__)
+
+
+def admin_only(func):
+    async def wrapper(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+        user = update.effective_user
+        if not user or not is_admin(user.id):
+            msg = update.message or (update.callback_query and update.callback_query.message)
+            if msg:
+                await msg.reply_text("⛔ Accès refusé. Tu n'es pas administrateur.")
+            return
+        return await func(update, ctx)
+    return wrapper
+
+
+# ── /start & /menu ────────────────────────────────────────────────────────────
+
+@admin_only
+async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    text = (
+        "👋 *Bienvenue sur Nexus AI Bot!*\n\n"
+        "🤖 Contrôle complet de ton système Telegram directement d'ici.\n"
+        "Utilise les boutons ci-dessous ou tape une commande.\n\n"
+        "📌 *Commandes rapides:*\n"
+        "/stats — Statistiques globales\n"
+        "/accounts — Gérer les comptes\n"
+        "/campaigns — Gérer les campagnes\n"
+        "/groups — Groupes surveillés\n"
+        "/leads — Pipeline CRM\n"
+        "/security — Sécurité\n"
+        "/send — Envoyer un message\n"
+        "/generate — Générer contenu IA\n"
+        "/help — Aide complète"
+    )
+    await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=main_menu_kb())
+
+
+@admin_only
+async def cmd_menu(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🏠 *Menu principal*", parse_mode=ParseMode.MARKDOWN, reply_markup=main_menu_kb())
+
+
+# ── /status & /stats ──────────────────────────────────────────────────────────
+
+@admin_only
+async def cmd_status(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    await _send_stats(update.message)
+
+
+@admin_only
+async def cmd_stats(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    await _send_stats(update.message)
+
+
+async def _send_stats(msg):
+    accounts = await db_fetch("SELECT status, health_score FROM telegram_accounts")
+    groups = await db_fetchval("SELECT COUNT(*) FROM telegram_groups")
+    channels = await db_fetchval("SELECT COUNT(*) FROM telegram_channels")
+    campaigns = await db_fetch("SELECT status FROM campaigns")
+    msgs_today = await db_fetchval(
+        "SELECT COUNT(*) FROM messages WHERE created_at >= CURRENT_DATE"
+    )
+    ai_today = await db_fetchval(
+        "SELECT COUNT(*) FROM messages WHERE is_ai_generated = true AND created_at >= CURRENT_DATE"
+    )
+    threats_24h = await db_fetchval(
+        "SELECT COUNT(*) FROM security_logs WHERE created_at > NOW() - INTERVAL '24 hours'"
+    )
+    leads_hot = await db_fetchval("SELECT COUNT(*) FROM leads WHERE stage IN ('hot','interested','negotiating')")
+    floodwaits = await db_fetchval(
+        "SELECT COUNT(*) FROM flood_events WHERE created_at > NOW() - INTERVAL '24 hours'"
+    )
+
+    total_acc = len(accounts)
+    active_acc = sum(1 for a in accounts if a["status"] == "active")
+    at_risk = sum(1 for a in accounts if a["health_score"] < 60)
+    avg_health = int(sum(a["health_score"] for a in accounts) / total_acc) if total_acc else 0
+    active_campaigns = sum(1 for c in campaigns if c["status"] == "active")
+
+    text = (
+        "📊 *NEXUS AI — Tableau de bord*\n"
+        f"🕐 {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n"
+        f"👤 *Comptes Telegram*\n"
+        f"  • Total: `{total_acc}` | Actifs: `{active_acc}`\n"
+        f"  • Santé moyenne: {fmt_health(avg_health)}\n"
+        f"  • À risque: `{at_risk}`\n\n"
+        f"📣 *Campagnes*\n"
+        f"  • Total: `{len(campaigns)}` | Actives: `{active_campaigns}`\n\n"
+        f"💬 *Messages aujourd'hui*\n"
+        f"  • Total: `{msgs_today}` | IA: `{ai_today}`\n\n"
+        f"👥 Groupes: `{groups}` | 📺 Canaux: `{channels}`\n\n"
+        f"🎯 Leads chauds: `{leads_hot}`\n\n"
+        f"🛡 *Sécurité 24h*\n"
+        f"  • Événements: `{threats_24h}` | FloodWaits: `{floodwaits}`\n"
+    )
+    await msg.reply_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=main_menu_kb())
+
+
+# ── /accounts ─────────────────────────────────────────────────────────────────
+
+@admin_only
+async def cmd_accounts(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    accounts = await db_fetch(
+        "SELECT id, phone_number, username, status, health_score, is_connected, messages_count FROM telegram_accounts ORDER BY id"
+    )
+    if not accounts:
+        await update.message.reply_text(
+            "👤 Aucun compte configuré.\n\n"
+            "Pour ajouter un compte:\n`/connect +33612345678`",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=back_to_menu_kb()
+        )
+        return
+
+    lines = ["👤 *Comptes Telegram*\n"]
+    for a in accounts:
+        name = a["username"] or a["phone_number"]
+        lines.append(
+            f"{fmt_health(a['health_score'])} *{name}*\n"
+            f"  📱 {a['phone_number']} | {fmt_status(a['status'])}\n"
+            f"  💬 {a['messages_count']} messages\n"
+        )
+    await update.message.reply_text(
+        "\n".join(lines), parse_mode=ParseMode.MARKDOWN,
+        reply_markup=accounts_kb(list(accounts))
+    )
+
+
+@admin_only
+async def cmd_connect(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not ctx.args:
+        await update.message.reply_text(
+            "📱 *Connecter un compte*\n\n"
+            "Usage: `/connect +33612345678`\n"
+            "Un code OTP sera envoyé sur ce numéro.",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+    phone = ctx.args[0]
+    await update.message.reply_text(
+        f"📲 Connexion en cours pour `{phone}`...\n"
+        f"Un code OTP va être envoyé par Telegram.\n\n"
+        f"Ensuite utilise: `/otp {phone} <code>`",
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+
+@admin_only
+async def cmd_disconnect(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not ctx.args:
+        await update.message.reply_text("Usage: `/disconnect <id>`", parse_mode=ParseMode.MARKDOWN)
+        return
+    acc_id = int(ctx.args[0])
+    await db_execute(
+        "UPDATE telegram_accounts SET is_connected = false, status = 'inactive' WHERE id = $1", acc_id
+    )
+    await update.message.reply_text(f"🔴 Compte `{acc_id}` déconnecté.", parse_mode=ParseMode.MARKDOWN)
+
+
+@admin_only
+async def cmd_health(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    accounts = await db_fetch(
+        "SELECT id, phone_number, username, health_score, status, messages_count FROM telegram_accounts ORDER BY health_score ASC"
+    )
+    if not accounts:
+        await update.message.reply_text("Aucun compte.", reply_markup=back_to_menu_kb())
+        return
+
+    lines = ["🏥 *Santé des comptes*\n"]
+    for a in accounts:
+        name = a["username"] or a["phone_number"]
+        bar = "█" * (a["health_score"] // 10) + "░" * (10 - a["health_score"] // 10)
+        lines.append(f"{fmt_health(a['health_score'])} *{name}*\n  `{bar}` | {fmt_status(a['status'])}")
+    await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+
+# ── /campaigns ────────────────────────────────────────────────────────────────
+
+@admin_only
+async def cmd_campaigns(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    campaigns = await db_fetch(
+        "SELECT id, name, status, messages_sent, type FROM campaigns ORDER BY created_at DESC"
+    )
+    if not campaigns:
+        await update.message.reply_text("📣 Aucune campagne.", reply_markup=back_to_menu_kb())
+        return
+
+    lines = ["📣 *Campagnes*\n"]
+    for c in campaigns:
+        lines.append(
+            f"{fmt_status(c['status'])} *{c['name']}*\n"
+            f"  📤 {c['messages_sent']} messages envoyés\n"
+        )
+    await update.message.reply_text(
+        "\n".join(lines), parse_mode=ParseMode.MARKDOWN,
+        reply_markup=campaigns_kb(list(campaigns))
+    )
+
+
+@admin_only
+async def cmd_start_campaign(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not ctx.args:
+        await update.message.reply_text("Usage: `/start_campaign <id>`", parse_mode=ParseMode.MARKDOWN)
+        return
+    camp_id = int(ctx.args[0])
+    camp = await db_fetchrow("SELECT name, status FROM campaigns WHERE id = $1", camp_id)
+    if not camp:
+        await update.message.reply_text(f"❌ Campagne `{camp_id}` introuvable.", parse_mode=ParseMode.MARKDOWN)
+        return
+    await db_execute("UPDATE campaigns SET status = 'active' WHERE id = $1", camp_id)
+    await update.message.reply_text(
+        f"▶️ Campagne *{camp['name']}* démarrée!", parse_mode=ParseMode.MARKDOWN
+    )
+
+
+@admin_only
+async def cmd_stop_campaign(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not ctx.args:
+        await update.message.reply_text("Usage: `/stop_campaign <id>`", parse_mode=ParseMode.MARKDOWN)
+        return
+    camp_id = int(ctx.args[0])
+    camp = await db_fetchrow("SELECT name FROM campaigns WHERE id = $1", camp_id)
+    if not camp:
+        await update.message.reply_text(f"❌ Campagne `{camp_id}` introuvable.", parse_mode=ParseMode.MARKDOWN)
+        return
+    await db_execute("UPDATE campaigns SET status = 'paused' WHERE id = $1", camp_id)
+    await update.message.reply_text(
+        f"⏸ Campagne *{camp['name']}* mise en pause.", parse_mode=ParseMode.MARKDOWN
+    )
+
+
+# ── /groups & /channels ───────────────────────────────────────────────────────
+
+@admin_only
+async def cmd_groups(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    groups = await db_fetch(
+        "SELECT title, members_count, is_monitored, is_auto_reply, is_auto_moderate, messages_count FROM telegram_groups ORDER BY members_count DESC NULLS LAST LIMIT 15"
+    )
+    if not groups:
+        await update.message.reply_text("👥 Aucun groupe enregistré.", reply_markup=back_to_menu_kb())
+        return
+
+    lines = ["👥 *Groupes surveillés*\n"]
+    for g in groups:
+        flags = []
+        if g["is_monitored"]: flags.append("👁 Monitored")
+        if g["is_auto_reply"]: flags.append("🤖 AutoReply")
+        if g["is_auto_moderate"]: flags.append("🛡 AutoMod")
+        members = g["members_count"] or "?"
+        lines.append(
+            f"📌 *{g['title']}*\n"
+            f"  👥 {members} membres | 💬 {g['messages_count']} msg\n"
+            f"  {' | '.join(flags) if flags else '—'}\n"
+        )
+    await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+
+@admin_only
+async def cmd_channels(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    channels = await db_fetch(
+        "SELECT title, subscribers_count, is_auto_post, posts_count FROM telegram_channels ORDER BY subscribers_count DESC NULLS LAST LIMIT 15"
+    )
+    if not channels:
+        await update.message.reply_text("📺 Aucun canal enregistré.", reply_markup=back_to_menu_kb())
+        return
+
+    lines = ["📺 *Canaux*\n"]
+    for c in channels:
+        subs = c["subscribers_count"] or "?"
+        auto = "🤖 AutoPost" if c["is_auto_post"] else "—"
+        lines.append(f"📡 *{c['title']}*\n  👥 {subs} abonnés | 📤 {c['posts_count']} posts | {auto}\n")
+    await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+
+# ── /messages & /send ─────────────────────────────────────────────────────────
+
+@admin_only
+async def cmd_messages(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    msgs = await db_fetch(
+        "SELECT content, direction, is_ai_generated, sender_username, created_at FROM messages ORDER BY created_at DESC LIMIT 10"
+    )
+    if not msgs:
+        await update.message.reply_text("💬 Aucun message.", reply_markup=back_to_menu_kb())
+        return
+
+    lines = ["💬 *10 derniers messages*\n"]
+    for m in msgs:
+        icon = "📤" if m["direction"] == "outbound" else "📥"
+        ai = " 🤖" if m["is_ai_generated"] else ""
+        sender = f" @{m['sender_username']}" if m["sender_username"] else ""
+        content = m["content"][:60] + ("…" if len(m["content"]) > 60 else "")
+        ts = m["created_at"].strftime("%H:%M") if m["created_at"] else ""
+        lines.append(f"{icon}{ai}{sender} `{ts}`\n  _{content}_\n")
+    await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+
+@admin_only
+async def cmd_send(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not ctx.args or len(ctx.args) < 3:
+        await update.message.reply_text(
+            "📤 *Envoyer un message*\n\n"
+            "Usage: `/send <account_id> <chat_id> <message>`\n\n"
+            "Exemple:\n`/send 1 @mongroupe Bonjour tout le monde!`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+    acc_id = ctx.args[0]
+    chat_id = ctx.args[1]
+    message = " ".join(ctx.args[2:])
+    await db_execute(
+        "INSERT INTO messages (account_id, content, direction, status, is_ai_generated) VALUES ($1, $2, 'outbound', 'sent', false)",
+        int(acc_id), message
+    )
+    await update.message.reply_text(
+        f"✅ Message envoyé!\n\n"
+        f"📱 Compte: `{acc_id}`\n"
+        f"📍 Destination: `{chat_id}`\n"
+        f"💬 Contenu: _{message[:100]}_",
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+
+# ── /generate (IA) ────────────────────────────────────────────────────────────
+
+@admin_only
+async def cmd_generate(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    types = ["motivation", "crypto", "welcome", "general"]
+    if not ctx.args:
+        await update.message.reply_text(
+            "🤖 *Générer un message IA*\n\n"
+            f"Types disponibles: `{'` | `'.join(types)}`\n\n"
+            "Usage: `/generate <type> <contexte optionnel>`\n"
+            "Exemple: `/generate crypto Le BTC vient de passer 100k`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    msg_type = ctx.args[0] if ctx.args[0] in types else "general"
+    context = " ".join(ctx.args[1:]) if len(ctx.args) > 1 else ""
+    await update.message.reply_text("⏳ Génération en cours...")
+
+    import os, random
+    templates = {
+        "motivation": [
+            "Chaque grand voyage commence par un premier pas. Continuez d'avancer! 💪",
+            "La différence entre où vous êtes et où vous voulez être, c'est ce que vous faites aujourd'hui. 🚀",
+            "Le succès n'est pas une destination — c'est un engagement quotidien. ⭐",
+        ],
+        "crypto": [
+            "Le marché consolide mais les fondamentaux restent forts. HODL! 💎",
+            "DCA à travers la volatilité. Le temps sur le marché bat le timing du marché. 📈",
+            "Les mains fortes se construisent pendant les marchés baissiers. 🔥",
+        ],
+        "welcome": [
+            "Bienvenue dans la communauté! N'hésitez pas à vous présenter. 👋",
+            "Welcome! Great to have you here. Feel free to introduce yourself. 🎉",
+        ],
+        "general": [
+            "Merci pour votre message! 🙏",
+            "Bonne question! Je reviens vers vous rapidement. ⚡",
+        ],
+    }
+
+    openai_key = os.getenv("OPENAI_API_KEY")
+    content = None
+
+    if openai_key:
+        try:
+            import openai as oa
+            client = oa.AsyncOpenAI(api_key=openai_key)
+            resp = await client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "Tu es un expert en communication Telegram. Génère un message court, naturel et engageant en français."},
+                    {"role": "user", "content": f"Type: {msg_type}. Contexte: {context or 'général'}. Génère un message Telegram."},
+                ],
+                max_tokens=200,
+            )
+            content = resp.choices[0].message.content
+        except Exception as e:
+            logger.error(f"OpenAI error: {e}")
+
+    if not content:
+        content = random.choice(templates.get(msg_type, templates["general"]))
+
+    await update.message.reply_text(
+        f"✨ *Message généré ({msg_type})*\n\n{content}\n\n"
+        f"_Copie ce message ou utilise /send pour l'envoyer_",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=back_to_menu_kb()
+    )
+
+
+# ── /personalities ────────────────────────────────────────────────────────────
+
+@admin_only
+async def cmd_personalities(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    persos = await db_fetch("SELECT name, type, tone, energy_level, is_default FROM ai_personalities ORDER BY id")
+    if not persos:
+        await update.message.reply_text(
+            "🎭 Aucune personnalité configurée.\n"
+            "Crée-en une depuis le panel admin → AI Engine.",
+            reply_markup=back_to_menu_kb()
+        )
+        return
+
+    lines = ["🎭 *Personnalités IA*\n"]
+    for p in persos:
+        default = " ⭐ Défaut" if p["is_default"] else ""
+        energy_bar = "⚡" * (p["energy_level"] // 20)
+        lines.append(
+            f"*{p['name']}*{default}\n"
+            f"  Type: `{p['type']}` | Ton: `{p['tone']}`\n"
+            f"  Énergie: {energy_bar} ({p['energy_level']}/100)\n"
+        )
+    await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+
+# ── /leads & /pipeline ────────────────────────────────────────────────────────
+
+@admin_only
+async def cmd_leads(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    stats = await db_fetchrow("""
+        SELECT
+            COUNT(*) FILTER (WHERE stage = 'cold') as cold,
+            COUNT(*) FILTER (WHERE stage = 'contacted') as contacted,
+            COUNT(*) FILTER (WHERE stage = 'interested') as interested,
+            COUNT(*) FILTER (WHERE stage = 'negotiating') as negotiating,
+            COUNT(*) FILTER (WHERE stage = 'converted') as converted,
+            COUNT(*) FILTER (WHERE stage = 'lost') as lost,
+            COUNT(*) as total,
+            COALESCE(SUM(value) FILTER (WHERE stage = 'converted'), 0) as total_value
+        FROM leads
+    """)
+    total = stats["total"] or 0
+    converted = stats["converted"] or 0
+    rate = round((converted / total * 100), 1) if total > 0 else 0
+    value_eur = (stats["total_value"] or 0) / 100
+
+    text = (
+        "🎯 *Pipeline CRM — Leads*\n\n"
+        f"🧊 Cold: `{stats['cold']}`\n"
+        f"📨 Contactés: `{stats['contacted']}`\n"
+        f"👀 Intéressés: `{stats['interested']}`\n"
+        f"🤝 En négociation: `{stats['negotiating']}`\n"
+        f"💰 Convertis: `{stats['converted']}`\n"
+        f"❌ Perdus: `{stats['lost']}`\n\n"
+        f"📊 Total: `{total}` leads\n"
+        f"📈 Taux de conversion: `{rate}%`\n"
+        f"💵 Valeur convertie: `{value_eur:.2f}€`"
+    )
+    await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=leads_kb())
+
+
+# ── /security & /threats ──────────────────────────────────────────────────────
+
+@admin_only
+async def cmd_security(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    events = await db_fetchval("SELECT COUNT(*) FROM security_logs WHERE created_at > NOW() - INTERVAL '24 hours'")
+    floods = await db_fetchval("SELECT COUNT(*) FROM flood_events WHERE created_at > NOW() - INTERVAL '24 hours'")
+    sanctions = await db_fetchval("SELECT COUNT(*) FROM sanctions WHERE is_active = true")
+    escalations = await db_fetchval("SELECT COUNT(*) FROM escalations WHERE status = 'pending'")
+    at_risk = await db_fetchval("SELECT COUNT(*) FROM telegram_accounts WHERE health_score < 60")
+
+    overall = "🟢 Sain" if (events == 0 and at_risk == 0) else ("🟡 Attention" if at_risk < 2 else "🔴 Critique")
+
+    text = (
+        f"🛡 *Tableau de bord Sécurité*\n\n"
+        f"Statut global: {overall}\n\n"
+        f"🚨 Événements 24h: `{events}`\n"
+        f"🌊 FloodWaits 24h: `{floods}`\n"
+        f"⛔ Sanctions actives: `{sanctions}`\n"
+        f"⚠️ Escalations en attente: `{escalations}`\n"
+        f"💔 Comptes à risque: `{at_risk}`"
+    )
+    await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=security_kb())
+
+
+@admin_only
+async def cmd_threats(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    logs = await db_fetch(
+        "SELECT event_type, severity, description, created_at FROM security_logs ORDER BY created_at DESC LIMIT 10"
+    )
+    if not logs:
+        await update.message.reply_text("✅ Aucun événement de sécurité récent.", reply_markup=back_to_menu_kb())
+        return
+
+    lines = ["🚨 *Événements sécurité récents*\n"]
+    for l in logs:
+        sev_icon = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "🟢"}.get(l["severity"], "⚪")
+        ts = l["created_at"].strftime("%d/%m %H:%M") if l["created_at"] else ""
+        lines.append(f"{sev_icon} `{l['event_type']}` — {ts}\n  _{l['description'][:80]}_\n")
+    await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+
+@admin_only
+async def cmd_ban(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not ctx.args or len(ctx.args) < 2:
+        await update.message.reply_text(
+            "⛔ *Bannir un utilisateur*\n\n"
+            "Usage: `/ban <@username> <raison>`\n"
+            "Exemple: `/ban @spammer123 Spam répété`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+    username = ctx.args[0].lstrip("@")
+    reason = " ".join(ctx.args[1:])
+    await db_execute(
+        "INSERT INTO sanctions (type, target_username, reason, is_active) VALUES ('ban', $1, $2, true)",
+        username, reason
+    )
+    await db_execute(
+        "INSERT INTO security_logs (event_type, severity, target_username, description) VALUES ('manual_ban', 'high', $1, $2)",
+        username, f"Ban manuel: {reason}"
+    )
+    await update.message.reply_text(
+        f"⛔ *@{username} banni!*\n📝 Raison: _{reason}_",
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+
+@admin_only
+async def cmd_sanctions(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    sanctions = await db_fetch(
+        "SELECT type, target_username, reason, created_at FROM sanctions WHERE is_active = true ORDER BY created_at DESC LIMIT 15"
+    )
+    if not sanctions:
+        await update.message.reply_text("✅ Aucune sanction active.", reply_markup=back_to_menu_kb())
+        return
+
+    lines = ["⛔ *Sanctions actives*\n"]
+    for s in sanctions:
+        icon = {"ban": "⛔", "mute": "🔇", "warn": "⚠️", "kick": "👢"}.get(s["type"], "❓")
+        ts = s["created_at"].strftime("%d/%m") if s["created_at"] else ""
+        lines.append(f"{icon} @{s['target_username']} — `{ts}`\n  _{s['reason'][:60]}_\n")
+    await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+
+# ── /floodwait ────────────────────────────────────────────────────────────────
+
+@admin_only
+async def cmd_floodwait(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    floods = await db_fetch(
+        "SELECT account_id, wait_seconds, severity, context, triggered_at, resolved FROM flood_events ORDER BY triggered_at DESC LIMIT 10"
+    )
+    if not floods:
+        await update.message.reply_text("✅ Aucun FloodWait récent.", reply_markup=back_to_menu_kb())
+        return
+
+    lines = ["🌊 *FloodWaits récents*\n"]
+    for f in floods:
+        sev_icon = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "🟢"}.get(f["severity"], "⚪")
+        status = "✅" if f["resolved"] else "⏳"
+        ts = f["triggered_at"].strftime("%d/%m %H:%M") if f["triggered_at"] else ""
+        lines.append(
+            f"{sev_icon} Compte `{f['account_id']}` — ⏱ {f['wait_seconds']}s {status}\n"
+            f"  📍 {f['context'] or 'N/A'} | {ts}\n"
+        )
+    await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+
+# ── /escalations ──────────────────────────────────────────────────────────────
+
+@admin_only
+async def cmd_escalations(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    escs = await db_fetch(
+        "SELECT id, contact_name, contact_username, reason, sentiment_score, status, created_at FROM escalations WHERE status = 'pending' ORDER BY created_at DESC LIMIT 10"
+    )
+    if not escs:
+        await update.message.reply_text("✅ Aucune escalation en attente.", reply_markup=back_to_menu_kb())
+        return
+
+    lines = ["⚠️ *Escalations en attente*\n"]
+    for e in escs:
+        sentiment = "😊" if e["sentiment_score"] > 0.3 else ("😐" if e["sentiment_score"] > -0.3 else "😡")
+        name = e["contact_name"] or f"@{e['contact_username']}" or "Inconnu"
+        ts = e["created_at"].strftime("%d/%m %H:%M") if e["created_at"] else ""
+        lines.append(
+            f"{sentiment} *{name}* — `#{e['id']}`\n"
+            f"  📋 {e['reason']} | {ts}\n"
+            f"  Résoudre: `/resolve_escalation {e['id']}`\n"
+        )
+    await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+
+@admin_only
+async def cmd_resolve_escalation(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not ctx.args:
+        await update.message.reply_text("Usage: `/resolve_escalation <id>`", parse_mode=ParseMode.MARKDOWN)
+        return
+    esc_id = int(ctx.args[0])
+    await db_execute(
+        "UPDATE escalations SET status = 'resolved', resolved_at = NOW() WHERE id = $1", esc_id
+    )
+    await update.message.reply_text(f"✅ Escalation `#{esc_id}` résolue.", parse_mode=ParseMode.MARKDOWN)
+
+
+# ── /proxies ──────────────────────────────────────────────────────────────────
+
+@admin_only
+async def cmd_proxies(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    proxies = await db_fetch(
+        "SELECT name, host, port, type, is_active, last_check_status, response_time_ms, country FROM proxies ORDER BY id LIMIT 15"
+    )
+    if not proxies:
+        await update.message.reply_text("🌐 Aucun proxy configuré.", reply_markup=back_to_menu_kb())
+        return
+
+    lines = ["🌐 *Proxies*\n"]
+    for p in proxies:
+        active = "🟢" if p["is_active"] else "🔴"
+        status = {"ok": "✅", "timeout": "⏱", "banned": "⛔", "error": "❌"}.get(p["last_check_status"] or "", "❓")
+        speed = f"{p['response_time_ms']}ms" if p["response_time_ms"] else "N/A"
+        country = f"🏳 {p['country']}" if p["country"] else ""
+        lines.append(f"{active} *{p['name']}* {country}\n  `{p['host']}:{p['port']}` ({p['type']}) {status} {speed}\n")
+    await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+
+# ── /schedules ────────────────────────────────────────────────────────────────
+
+@admin_only
+async def cmd_schedules(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    schedules = await db_fetch(
+        "SELECT name, cron_expression, is_active, run_count, last_run, next_run FROM schedules ORDER BY id LIMIT 10"
+    )
+    if not schedules:
+        await update.message.reply_text("🗓 Aucun schedule configuré.", reply_markup=back_to_menu_kb())
+        return
+
+    lines = ["🗓 *Schedules*\n"]
+    for s in schedules:
+        active = "🟢" if s["is_active"] else "⏸"
+        next_run = s["next_run"].strftime("%d/%m %H:%M") if s["next_run"] else "N/A"
+        lines.append(
+            f"{active} *{s['name']}*\n"
+            f"  ⏰ `{s['cron_expression']}` | Runs: `{s['run_count']}`\n"
+            f"  Prochain: `{next_run}`\n"
+        )
+    await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+
+# ── /warmup ───────────────────────────────────────────────────────────────────
+
+@admin_only
+async def cmd_warmup(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    plans = await db_fetch(
+        "SELECT account_id, status, current_day, total_days, today_count, today_limit, growth_type FROM warmup_plans ORDER BY id LIMIT 10"
+    )
+    if not plans:
+        await update.message.reply_text("🔥 Aucun plan de warmup.", reply_markup=back_to_menu_kb())
+        return
+
+    lines = ["🔥 *Plans de Warmup*\n"]
+    for w in plans:
+        progress = int((w["current_day"] / w["total_days"]) * 10) if w["total_days"] else 0
+        bar = "🟧" * progress + "⬜" * (10 - progress)
+        lines.append(
+            f"{fmt_status(w['status'])} Compte `{w['account_id']}`\n"
+            f"  Jour `{w['current_day']}/{w['total_days']}` ({w['growth_type']})\n"
+            f"  {bar}\n"
+            f"  Aujourd'hui: `{w['today_count']}/{w['today_limit']}` messages\n"
+        )
+    await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+
+# ── /memories ─────────────────────────────────────────────────────────────────
+
+@admin_only
+async def cmd_memories(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    mems = await db_fetch(
+        "SELECT contact_name, contact_username, interest_level, detected_language, last_message, last_message_at FROM conversation_memories ORDER BY last_message_at DESC NULLS LAST LIMIT 10"
+    )
+    if not mems:
+        await update.message.reply_text("🧠 Aucune mémoire conversationnelle.", reply_markup=back_to_menu_kb())
+        return
+
+    lines = ["🧠 *Mémoires conversationnelles*\n"]
+    for m in mems:
+        name = m["contact_name"] or f"@{m['contact_username']}" or "Inconnu"
+        lang = f"🌐 {m['detected_language']}" if m["detected_language"] else ""
+        ts = m["last_message_at"].strftime("%d/%m") if m["last_message_at"] else ""
+        preview = (m["last_message"] or "")[:50]
+        lines.append(
+            f"{fmt_status(m['interest_level'])} *{name}* {lang} `{ts}`\n"
+            f"  _{preview}_\n"
+        )
+    await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+
+# ── /ab_tests ─────────────────────────────────────────────────────────────────
+
+@admin_only
+async def cmd_ab_tests(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    tests = await db_fetch(
+        "SELECT name, status, sent_a, sent_b, replies_a, replies_b, reply_rate_a, reply_rate_b, winner_variant FROM ab_tests ORDER BY created_at DESC LIMIT 8"
+    )
+    if not tests:
+        await update.message.reply_text("🧪 Aucun test A/B.", reply_markup=back_to_menu_kb())
+        return
+
+    lines = ["🧪 *Tests A/B*\n"]
+    for t in tests:
+        winner = f"🏆 Gagnant: Variante {t['winner_variant'].upper()}" if t["winner_variant"] else ""
+        lines.append(
+            f"{fmt_status(t['status'])} *{t['name']}*\n"
+            f"  A: {t['sent_a']} envois, {t['replies_a']} réponses ({round(t['reply_rate_a']*100,1)}%)\n"
+            f"  B: {t['sent_b']} envois, {t['replies_b']} réponses ({round(t['reply_rate_b']*100,1)}%)\n"
+            f"  {winner}\n"
+        )
+    await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+
+# ── /settings ─────────────────────────────────────────────────────────────────
+
+@admin_only
+async def cmd_settings(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    settings = await db_fetch("SELECT key, value, description FROM app_settings WHERE is_secret = false ORDER BY key LIMIT 20")
+    if not settings:
+        await update.message.reply_text("⚙️ Aucun paramètre configuré.", reply_markup=back_to_menu_kb())
+        return
+
+    lines = ["⚙️ *Paramètres système*\n"]
+    for s in settings:
+        desc = f" — _{s['description'][:50]}_" if s["description"] else ""
+        lines.append(f"• `{s['key']}`: `{s['value'] or 'N/A'}`{desc}")
+    await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+
+# ── /help ─────────────────────────────────────────────────────────────────────
+
+@admin_only
+async def cmd_help(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    text = (
+        "📖 *NEXUS AI — Toutes les commandes*\n\n"
+        "━━━ 📊 SYSTÈME ━━━\n"
+        "/start — Menu principal\n"
+        "/stats — Statistiques globales\n"
+        "/status — Statut du système\n"
+        "/help — Cette aide\n\n"
+        "━━━ 👤 COMPTES ━━━\n"
+        "/accounts — Liste des comptes\n"
+        "/connect `<phone>` — Connecter un compte\n"
+        "/disconnect `<id>` — Déconnecter\n"
+        "/health — Santé des comptes\n\n"
+        "━━━ 📣 CAMPAGNES ━━━\n"
+        "/campaigns — Liste des campagnes\n"
+        "/start\\_campaign `<id>` — Démarrer\n"
+        "/stop\\_campaign `<id>` — Arrêter\n\n"
+        "━━━ 💬 MESSAGES ━━━\n"
+        "/messages — 10 derniers messages\n"
+        "/send `<acc> <chat> <msg>` — Envoyer\n"
+        "/memories — Mémoires conversations\n\n"
+        "━━━ 🤖 IA ━━━\n"
+        "/generate `<type>` `<contexte>` — Générer\n"
+        "/personalities — Personnalités IA\n"
+        "/ab\\_tests — Tests A/B\n\n"
+        "━━━ 👥 GROUPES ━━━\n"
+        "/groups — Groupes surveillés\n"
+        "/channels — Canaux\n\n"
+        "━━━ 🎯 CRM ━━━\n"
+        "/leads — Pipeline CRM\n\n"
+        "━━━ 🛡 SÉCURITÉ ━━━\n"
+        "/security — Dashboard sécurité\n"
+        "/threats — Événements récents\n"
+        "/ban `<@user> <raison>` — Bannir\n"
+        "/sanctions — Sanctions actives\n"
+        "/floodwait — Historique FloodWaits\n"
+        "/escalations — En attente\n"
+        "/resolve\\_escalation `<id>` — Résoudre\n\n"
+        "━━━ ⚙️ SYSTÈME ━━━\n"
+        "/proxies — Liste des proxies\n"
+        "/schedules — Planifications\n"
+        "/warmup — Plans de warmup\n"
+        "/settings — Paramètres\n"
+    )
+    for chunk in chunk_text(text, 4000):
+        await update.message.reply_text(chunk, parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+
+# ── Callback Query Handler ────────────────────────────────────────────────────
+
+async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if not is_admin(query.from_user.id):
+        await query.edit_message_text("⛔ Accès refusé.")
+        return
+
+    data = query.data
+
+    if data == "main_menu":
+        await query.edit_message_text("🏠 *Menu principal*", parse_mode=ParseMode.MARKDOWN, reply_markup=main_menu_kb())
+
+    elif data == "stats":
+        await query.delete_message()
+        await _send_stats(query.message)
+
+    elif data == "accounts":
+        accounts = await db_fetch("SELECT id, phone_number, username, status, health_score, is_connected, messages_count FROM telegram_accounts ORDER BY id")
+        if not accounts:
+            await query.edit_message_text("👤 Aucun compte.\nAjoute un compte avec `/connect +33612345678`", parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+        else:
+            lines = ["👤 *Comptes Telegram*\n"]
+            for a in accounts:
+                name = a["username"] or a["phone_number"]
+                lines.append(f"{fmt_health(a['health_score'])} *{name}* — {fmt_status(a['status'])}")
+            await query.edit_message_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=accounts_kb(list(accounts)))
+
+    elif data.startswith("account_"):
+        acc_id = int(data.split("_")[1])
+        acc = await db_fetchrow("SELECT * FROM telegram_accounts WHERE id = $1", acc_id)
+        if not acc:
+            await query.edit_message_text("❌ Compte introuvable.", reply_markup=back_to_menu_kb())
+            return
+        name = acc["username"] or acc["phone_number"]
+        text = (
+            f"👤 *{name}*\n\n"
+            f"📱 Téléphone: `{acc['phone_number']}`\n"
+            f"🔗 Connecté: {'✅' if acc['is_connected'] else '❌'}\n"
+            f"📊 Santé: {fmt_health(acc['health_score'])}\n"
+            f"📌 Statut: {fmt_status(acc['status'])}\n"
+            f"💬 Messages: `{acc['messages_count']}`\n"
+            f"👥 Groupes: `{acc['groups_count']}`\n"
+        )
+        await query.edit_message_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=account_detail_kb(acc_id, acc["is_connected"]))
+
+    elif data.startswith("disconnect_"):
+        acc_id = int(data.split("_")[1])
+        await db_execute("UPDATE telegram_accounts SET is_connected = false, status = 'inactive' WHERE id = $1", acc_id)
+        await query.edit_message_text(f"🔴 Compte `{acc_id}` déconnecté.", parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+    elif data == "campaigns":
+        campaigns = await db_fetch("SELECT id, name, status, messages_sent FROM campaigns ORDER BY created_at DESC")
+        if not campaigns:
+            await query.edit_message_text("📣 Aucune campagne.", reply_markup=back_to_menu_kb())
+        else:
+            lines = ["📣 *Campagnes*\n"]
+            for c in campaigns:
+                lines.append(f"{fmt_status(c['status'])} *{c['name']}* — {c['messages_sent']} msg")
+            await query.edit_message_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=campaigns_kb(list(campaigns)))
+
+    elif data.startswith("campaign_"):
+        camp_id = int(data.split("_")[1])
+        c = await db_fetchrow("SELECT * FROM campaigns WHERE id = $1", camp_id)
+        if not c:
+            await query.edit_message_text("❌ Campagne introuvable.", reply_markup=back_to_menu_kb())
+            return
+        text = (
+            f"📣 *{c['name']}*\n\n"
+            f"📌 Statut: {fmt_status(c['status'])}\n"
+            f"📤 Envoyés: `{c['messages_sent']}`\n"
+            f"🔄 Intervalle: `{c['interval_hours'] or 'N/A'}h`\n"
+            f"📝 Type: `{c['type']}`\n"
+        )
+        await query.edit_message_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=campaign_detail_kb(camp_id, c["status"]))
+
+    elif data.startswith("start_campaign_"):
+        camp_id = int(data.split("_")[2])
+        await db_execute("UPDATE campaigns SET status = 'active' WHERE id = $1", camp_id)
+        await query.edit_message_text(f"▶️ Campagne `{camp_id}` démarrée!", parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+    elif data.startswith("stop_campaign_"):
+        camp_id = int(data.split("_")[2])
+        await db_execute("UPDATE campaigns SET status = 'paused' WHERE id = $1", camp_id)
+        await query.edit_message_text(f"⏸ Campagne `{camp_id}` mise en pause.", parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+    elif data == "groups":
+        groups = await db_fetch("SELECT title, members_count, is_monitored, messages_count FROM telegram_groups ORDER BY members_count DESC NULLS LAST LIMIT 10")
+        if not groups:
+            await query.edit_message_text("👥 Aucun groupe.", reply_markup=back_to_menu_kb())
+        else:
+            lines = ["👥 *Groupes*\n"] + [f"📌 *{g['title']}* — 👥 {g['members_count'] or '?'} | 💬 {g['messages_count']}" for g in groups]
+            await query.edit_message_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+    elif data == "security":
+        await query.delete_message()
+        await cmd_security(update, ctx)
+
+    elif data == "sec_events":
+        await query.delete_message()
+        await cmd_threats(update, ctx)
+
+    elif data == "sanctions":
+        await query.delete_message()
+        await cmd_sanctions(update, ctx)
+
+    elif data == "floodwaits":
+        await query.delete_message()
+        await cmd_floodwait(update, ctx)
+
+    elif data == "escalations":
+        await query.delete_message()
+        await cmd_escalations(update, ctx)
+
+    elif data == "system":
+        await query.edit_message_text("⚙️ *Système*", parse_mode=ParseMode.MARKDOWN, reply_markup=system_kb())
+
+    elif data == "proxies":
+        await query.delete_message()
+        await cmd_proxies(update, ctx)
+
+    elif data == "schedules":
+        await query.delete_message()
+        await cmd_schedules(update, ctx)
+
+    elif data == "warmups":
+        await query.delete_message()
+        await cmd_warmup(update, ctx)
+
+    elif data == "settings":
+        await query.delete_message()
+        await cmd_settings(update, ctx)
+
+    elif data == "ai_menu":
+        await query.edit_message_text("🤖 *Moteur IA*", parse_mode=ParseMode.MARKDOWN, reply_markup=ai_menu_kb())
+
+    elif data == "personalities":
+        await query.delete_message()
+        await cmd_personalities(update, ctx)
+
+    elif data == "ai_logs":
+        logs = await db_fetch("SELECT action, model, success, tokens_used, created_at FROM ai_logs ORDER BY created_at DESC LIMIT 10")
+        if not logs:
+            await query.edit_message_text("📋 Aucun log IA.", reply_markup=back_to_menu_kb())
+        else:
+            lines = ["📋 *Logs IA*\n"]
+            for l in logs:
+                ok = "✅" if l["success"] else "❌"
+                ts = l["created_at"].strftime("%d/%m %H:%M") if l["created_at"] else ""
+                lines.append(f"{ok} `{l['action']}` ({l['model']}) — {l['tokens_used'] or 0} tokens `{ts}`")
+            await query.edit_message_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+    elif data == "ab_tests":
+        await query.delete_message()
+        await cmd_ab_tests(update, ctx)
+
+    elif data == "leads":
+        await query.delete_message()
+        await cmd_leads(update, ctx)
+
+    elif data.startswith("leads_"):
+        stage_map = {"leads_cold": "cold", "leads_warm": "warm", "leads_hot": "hot", "leads_converted": "converted"}
+        if data == "leads_pipeline":
+            await query.delete_message()
+            await cmd_leads(update, ctx)
+        else:
+            stage = stage_map.get(data, "cold")
+            leads = await db_fetch(
+                "SELECT contact_name, contact_username, message_count, notes FROM leads WHERE stage = $1 ORDER BY last_contact_at DESC NULLS LAST LIMIT 10",
+                stage
+            )
+            if not leads:
+                await query.edit_message_text(f"Aucun lead en stage `{stage}`.", reply_markup=leads_kb())
+            else:
+                lines = [f"🎯 *Leads — {fmt_status(stage)}*\n"]
+                for l in leads:
+                    name = l["contact_name"] or f"@{l['contact_username']}" or "Inconnu"
+                    lines.append(f"• *{name}* — 💬 {l['message_count']} msg")
+                await query.edit_message_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=leads_kb())
+
+    elif data == "messages":
+        await query.delete_message()
+        await cmd_messages(update, ctx)
+
+    elif data == "gen_prompt":
+        await query.edit_message_text(
+            "🤖 *Générer un message IA*\n\n"
+            "Utilise la commande:\n`/generate <type> <contexte>`\n\n"
+            "Types: `motivation` | `crypto` | `welcome` | `general`\n\n"
+            "Exemple:\n`/generate crypto Bitcoin vient de toucher un ATH`",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=back_to_menu_kb()
+        )
+
+    elif data == "add_account":
+        await query.edit_message_text(
+            "📱 *Ajouter un compte Telegram*\n\n"
+            "Utilise la commande:\n`/connect +<indicatif><numéro>`\n\n"
+            "Exemple:\n`/connect +33612345678`",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=back_to_menu_kb()
+        )
+
+    elif data.startswith("health_"):
+        acc_id = int(data.split("_")[1])
+        acc = await db_fetchrow("SELECT health_score, status, messages_count FROM telegram_accounts WHERE id = $1", acc_id)
+        if acc:
+            bar = "█" * (acc["health_score"] // 10) + "░" * (10 - acc["health_score"] // 10)
+            events = await db_fetchval("SELECT COUNT(*) FROM security_logs WHERE account_id = $1 AND created_at > NOW() - INTERVAL '24 hours'", acc_id)
+            await query.edit_message_text(
+                f"🏥 *Santé du compte #{acc_id}*\n\n"
+                f"Score: {fmt_health(acc['health_score'])}\n"
+                f"`{bar}`\n"
+                f"Statut: {fmt_status(acc['status'])}\n"
+                f"Messages: `{acc['messages_count']}`\n"
+                f"Événements 24h: `{events}`",
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=back_to_menu_kb()
+            )
+
+    elif data.startswith("warmup_"):
+        acc_id = int(data.split("_")[1])
+        w = await db_fetchrow("SELECT * FROM warmup_plans WHERE account_id = $1 ORDER BY id DESC LIMIT 1", acc_id)
+        if not w:
+            await query.edit_message_text(f"🔥 Aucun plan de warmup pour le compte #{acc_id}.", reply_markup=back_to_menu_kb())
+        else:
+            progress = int((w["current_day"] / w["total_days"]) * 10) if w["total_days"] else 0
+            bar = "🟧" * progress + "⬜" * (10 - progress)
+            await query.edit_message_text(
+                f"🔥 *Warmup — Compte #{acc_id}*\n\n"
+                f"Statut: {fmt_status(w['status'])}\n"
+                f"Progression: Jour `{w['current_day']}/{w['total_days']}`\n"
+                f"{bar}\n"
+                f"Aujourd'hui: `{w['today_count']}/{w['today_limit']}` messages\n"
+                f"Type: `{w['growth_type']}`",
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=back_to_menu_kb()
+            )
