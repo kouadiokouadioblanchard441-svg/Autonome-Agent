@@ -48,11 +48,12 @@ db_pool: asyncpg.Pool | None = None
 
 _bot_stop_event: asyncio.Event | None = None
 _bot_task: asyncio.Task | None = None
+_notif_task: asyncio.Task | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global db_pool, _bot_stop_event, _bot_task
+    global db_pool, _bot_stop_event, _bot_task, _notif_task
     if DATABASE_URL:
         try:
             db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10, ssl="require")
@@ -60,27 +61,39 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"Failed to create DB pool: {e}")
 
-    # Start Telegram command bot
+    # Start Telegram command bot + notification loop
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     if bot_token:
         try:
-            from bot.runner import run_bot_polling
+            from bot.runner import run_bot_polling, build_app
+            from bot.notifications import notification_loop
             _bot_stop_event = asyncio.Event()
             _bot_task = asyncio.create_task(run_bot_polling(_bot_stop_event))
             logger.info("🤖 Telegram command bot started")
+
+            # Start notification loop once DB is ready
+            if db_pool:
+                # Build a lightweight bot instance just for sending notifications
+                _notif_app = await build_app()
+                await _notif_app.initialize()
+                _notif_task = asyncio.create_task(
+                    notification_loop(_notif_app.bot, db_pool, _bot_stop_event)
+                )
+                logger.info("🔔 Notification loop started")
         except Exception as e:
             logger.error(f"Failed to start command bot: {e}")
 
     yield
 
-    # Shutdown bot
+    # Shutdown bot + notifications
     if _bot_stop_event:
         _bot_stop_event.set()
-    if _bot_task:
-        try:
-            await asyncio.wait_for(_bot_task, timeout=5)
-        except Exception:
-            pass
+    for task in [_bot_task, _notif_task]:
+        if task:
+            try:
+                await asyncio.wait_for(task, timeout=5)
+            except Exception:
+                pass
 
     if db_pool:
         await db_pool.close()
