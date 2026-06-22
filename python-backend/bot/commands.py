@@ -151,6 +151,43 @@ async def cmd_accounts(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def _auto_resend_and_notify(client, phone: str, msg) -> None:
+    """
+    Appelé quand sign_in échoue avec PhoneCodeExpiredError ou PhoneCodeInvalidError.
+    Cela arrive souvent quand le moteur a redémarré et que le hash de l'ancienne
+    session n'est plus valide. On renvoie automatiquement un nouveau code OTP
+    sur le même client (déjà connecté) et on prévient l'utilisateur.
+    """
+    import time as _t
+    try:
+        logger.info("_auto_resend_and_notify: renvoi automatique du code pour %s", phone)
+        result = await client.send_code_request(phone)
+        new_hash = result.phone_code_hash
+        _pending_connections[phone] = {
+            "client": client,
+            "phone_code_hash": new_hash,
+            "awaiting_password": False,
+            "created_at": _t.time(),
+        }
+        await _save_pending_to_db(phone, client.session.save(), new_hash)
+        logger.info("_auto_resend_and_notify: nouveau code envoyé pour %s", phone)
+        await msg.edit_text(
+            "🔄 *Nouveau code envoyé automatiquement!*\n\n"
+            f"Le code précédent n'était plus valide (session expirée).\n"
+            f"Un *nouveau code* vient d'arriver sur `{phone}`.\n\n"
+            f"Entre-le maintenant:\n`/connect {phone} <nouveau_code>`\n\n"
+            f"⚡ *Entre-le dans les 2 minutes.*",
+            parse_mode=ParseMode.MARKDOWN
+        )
+    except Exception as resend_err:
+        logger.error("_auto_resend_and_notify: échec du renvoi pour %s: %s", phone, resend_err)
+        await msg.edit_text(
+            f"⏰ *Code expiré — impossible de renvoyer automatiquement*\n\n"
+            f"Lance une nouvelle connexion:\n`/connect {phone}`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+
+
 @admin_only
 async def cmd_connect(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     """/connect +33612345678 [code] — Envoie l'OTP ou vérifie directement si le code est fourni."""
@@ -219,13 +256,7 @@ async def cmd_connect(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                             parse_mode=ParseMode.MARKDOWN
                         )
                     elif "expired" in err_str or "invalid" in err_str:
-                        await msg.edit_text(
-                            "⏰ *Code expiré ou invalide*\n\n"
-                            f"Demande un nouveau code:\n`/connect {phone}`\n\n"
-                            "Puis entre-le rapidement avec:\n"
-                            f"`/connect {phone} <nouveau_code>`",
-                            parse_mode=ParseMode.MARKDOWN
-                        )
+                        await _auto_resend_and_notify(client, phone, msg)
                     else:
                         await msg.edit_text(
                             f"❌ Erreur: `{e}`\n\n"
@@ -527,14 +558,8 @@ async def cmd_otp(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 f"Exemple: `/password {phone} MonMotDePasse123`",
                 parse_mode=ParseMode.MARKDOWN
             )
-        elif "expired" in err_str:
-            await msg.edit_text(
-                f"⏰ *Code expiré*\n\n"
-                f"Le code a plus de 5 minutes. Demande un nouveau:\n\n"
-                f"`/connect {phone}`\n\n"
-                f"⚡ *Cette fois, entre le code dans les 2 minutes!*",
-                parse_mode=ParseMode.MARKDOWN
-            )
+        elif "expired" in err_str or "invalid" in err_str:
+            await _auto_resend_and_notify(client, phone, msg)
         else:
             await msg.edit_text(
                 f"❌ *Code invalide*\n\n`{e}`\n\n"
