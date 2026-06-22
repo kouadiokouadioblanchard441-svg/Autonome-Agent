@@ -77,6 +77,29 @@ TONE_PROMPTS = {
 }
 
 
+async def generate_text_with_trust(
+    topic: str,
+    tone: str = "casual",
+    language: str = "fr",
+    content_idea: str = "",
+    personality_prompt: str = "",
+    max_tokens: int = 400,
+    append_badge: bool = False,
+):
+    """
+    Generate text then run trust/fact-check on it.
+    Returns (text, trust_result). If append_badge=True, badge is appended to text.
+    """
+    from .trust_checker import check_and_label
+    raw_text = await generate_text(
+        topic=topic, tone=tone, language=language,
+        content_idea=content_idea, personality_prompt=personality_prompt,
+        max_tokens=max_tokens,
+    )
+    labeled_text, trust = await check_and_label(raw_text, append_badge=append_badge, language=language)
+    return labeled_text, trust
+
+
 async def generate_text(
     topic: str,
     tone: str = "casual",

@@ -11,7 +11,7 @@ from .commands import (
     cmd_campaigns, cmd_start_campaign, cmd_stop_campaign,
     cmd_groups, cmd_channels,
     cmd_messages, cmd_send,
-    cmd_generate, cmd_personalities, cmd_ab_tests,
+    cmd_generate, cmd_trust, cmd_personalities, cmd_ab_tests,
     cmd_leads,
     cmd_security, cmd_threats, cmd_ban, cmd_sanctions, cmd_floodwait,
     cmd_escalations, cmd_resolve_escalation,
@@ -50,6 +50,7 @@ COMMANDS = [
     BotCommand("messages", "10 derniers messages"),
     BotCommand("send", "Envoyer: /send <acc_id> <chat> <message>"),
     BotCommand("generate", "Générer contenu IA: /generate <type> <contexte>"),
+    BotCommand("trust", "Fact-check un texte: /trust <texte à analyser>"),
     BotCommand("personalities", "Personnalités IA"),
     BotCommand("ab_tests", "Tests A/B"),
     BotCommand("leads", "Pipeline CRM"),
@@ -115,6 +116,7 @@ async def build_app() -> Application:
     app.add_handler(CommandHandler("send", cmd_send))
 
     app.add_handler(CommandHandler("generate", cmd_generate))
+    app.add_handler(CommandHandler("trust", cmd_trust))
     app.add_handler(CommandHandler("personalities", cmd_personalities))
     app.add_handler(CommandHandler("ab_tests", cmd_ab_tests))
 

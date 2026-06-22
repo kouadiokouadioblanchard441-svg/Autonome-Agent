@@ -259,18 +259,37 @@ async def _post_content(
     except Exception:
         rt_prefix = ""
 
-    # 1 — Generate text
+    # 1 — Generate text + trust/fact-check
     if not isinstance(idea, str):
         idea = str(idea)
-    text = await generate_text(
+    from .content_gen import generate_text_with_trust
+    raw_text, trust = await generate_text_with_trust(
         topic=topic, tone=tone, language=lang,
         content_idea=idea,
         personality_prompt=system_prompt,
+        append_badge=False,   # badge stored in DB but not appended by default
     )
+    text = raw_text
     if rt_prefix:
         text = rt_prefix + text
+
+    # Log trust score
+    logger.info(
+        "[Account %d] Trust check: %s | score=%d | type=%s",
+        account_id, trust.label, trust.score, trust.content_type,
+    )
+
+    # Block or warn on very low-trust content (score < 20 = likely misleading)
+    if trust.score < 20:
+        logger.warning(
+            "[Account %d] Content blocked — trust score too low (%d): %s",
+            account_id, trust.score, text[:100],
+        )
+        return  # Don't post potentially misleading content
+
     if pool:
-        await _log_ai(pool, account_id, "auto_post", f"type={topic} idea={idea}", text)
+        await _log_ai(pool, account_id, "auto_post",
+                      f"type={topic} idea={idea} trust={trust.score} label={trust.label}", text)
 
     # 2 — Simulate human typing delay
     typing_time = max(2.0, min(12.0, len(text) / 250 * 60))

@@ -598,12 +598,106 @@ async def cmd_generate(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if not content:
         content = random.choice(templates.get(msg_type, templates["general"]))
 
+    # ── Trust / Fact-Check ──
+    try:
+        from .trust_checker import check_content, format_trust_report, score_color
+        trust = await check_content(content)
+        trust_block = (
+            f"\n\n─────────────────────\n"
+            f"🔍 *Trust & Fact-Check*\n"
+            f"{score_color(trust.score)} {trust.label} | Score: `{trust.score}/100`\n"
+            f"📝 _{trust.reasoning}_"
+            + (f"\n⚠️ Alertes: {' • '.join(trust.warnings)}" if trust.warnings else "")
+        )
+    except Exception as e:
+        logger.warning("Trust check failed in cmd_generate: %s", e)
+        trust_block = ""
+
     await update.message.reply_text(
-        f"✨ *Message généré ({msg_type})*\n\n{content}\n\n"
+        f"✨ *Message généré ({msg_type})*\n\n{content}{trust_block}\n\n"
         f"_Copie ce message ou utilise /send pour l'envoyer_",
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=back_to_menu_kb()
     )
+
+
+# ── /trust ────────────────────────────────────────────────────────────────────
+
+@admin_only
+async def cmd_trust(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """/trust <texte> — Analyse Trust & Fact-Check d'un texte quelconque"""
+    text = " ".join(ctx.args) if ctx.args else ""
+    if not text:
+        await update.message.reply_text(
+            "🔍 *Trust & Fact-Check*\n\n"
+            "Analyse la fiabilité d'un texte et détecte si c'est un fait, une opinion, "
+            "du contenu promotionnel ou potentiellement trompeur.\n\n"
+            "Usage: `/trust <ton texte ici>`\n\n"
+            "Exemple:\n"
+            "`/trust Bitcoin a augmenté de 150% cette année selon CoinGecko`\n\n"
+            "📊 *Labels possibles:*\n"
+            "✅ Vérifié — Faits vérifiables\n"
+            "💡 Opinion — Point de vue subjectif\n"
+            "🔄 Mixte — Mélange fait/opinion\n"
+            "⚠️ Non vérifiable — Claims douteux\n"
+            "📊 Données — Statistiques\n"
+            "🔥 Tendance — Contenu viral\n"
+            "📣 Promotionnel — Marketing",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=back_to_menu_kb(),
+        )
+        return
+
+    await update.message.reply_text("🔍 Analyse en cours...")
+
+    try:
+        from .trust_checker import check_content, format_trust_report, score_color
+        trust = await check_content(text)
+        report = format_trust_report(trust)
+        color  = score_color(trust.score)
+
+        # Visual score bar
+        bar_filled = "█" * (trust.score // 10)
+        bar_empty  = "░" * (10 - trust.score // 10)
+        header = (
+            f"🔍 *Analyse Trust & Fact-Check*\n\n"
+            f"*Texte analysé:*\n_{text[:200]}{'...' if len(text)>200 else ''}_\n\n"
+        )
+
+        result_text = (
+            f"{header}"
+            f"─────────────────────\n"
+            f"{color} {trust.label} | Score: `{trust.score}/100`\n"
+            f"`{bar_filled}{bar_empty}`\n"
+            f"Confiance: `{trust.confidence}%`\n\n"
+        )
+
+        if trust.reasoning:
+            result_text += f"📝 *Analyse:* _{trust.reasoning}_\n\n"
+
+        if trust.claims:
+            result_text += "📌 *Claims factuels détectés:*\n"
+            for c in trust.claims:
+                result_text += f"  • {c}\n"
+            result_text += "\n"
+
+        if trust.warnings:
+            result_text += "⚠️ *Signaux d'alerte:*\n"
+            for w in trust.warnings:
+                result_text += f"  • {w}\n"
+
+        await update.message.reply_text(
+            result_text,
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=back_to_menu_kb(),
+        )
+    except Exception as e:
+        logger.error("cmd_trust error: %s", e)
+        await update.message.reply_text(
+            f"❌ Erreur lors de l'analyse: `{e}`",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=back_to_menu_kb(),
+        )
 
 
 # ── /personalities ────────────────────────────────────────────────────────────
