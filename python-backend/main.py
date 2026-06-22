@@ -849,5 +849,5 @@ async def update_community_schedule(chat_type: str, tg_id: str, config: dict):
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("PYTHON_SERVICE_PORT", "8090"))
+    port = int(os.getenv("PYTHON_SERVICE_PORT", "9000"))
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

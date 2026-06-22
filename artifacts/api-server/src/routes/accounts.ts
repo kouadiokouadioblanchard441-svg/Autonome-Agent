@@ -14,7 +14,7 @@ import {
 import { logger } from "../lib/logger";
 
 const router = Router();
-const PYTHON_ENGINE = process.env.PYTHON_ENGINE_URL ?? "http://localhost:8090";
+const PYTHON_ENGINE = process.env.PYTHON_ENGINE_URL ?? "http://localhost:9000";
 
 async function callPython(path: string, body: unknown): Promise<{ ok: boolean; data: any }> {
   try {

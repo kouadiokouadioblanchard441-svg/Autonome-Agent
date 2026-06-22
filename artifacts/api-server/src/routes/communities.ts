@@ -1,7 +1,7 @@
 import { Router } from "express";
 
 const router = Router();
-const PYTHON_URL = process.env.PYTHON_SERVICE_URL || "http://localhost:8090";
+const PYTHON_URL = process.env.PYTHON_SERVICE_URL || "http://localhost:9000";
 
 async function pyFetch(path: string, opts: RequestInit = {}) {
   const res = await fetch(`${PYTHON_URL}${path}`, {

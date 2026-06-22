@@ -24,13 +24,13 @@ args = "Python Telethon Engine"
 name = "Python Telethon Engine"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "uv run python python-backend/main.py"
-waitForPort = 8090
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "fuser -k 9000/tcp 2>/dev/null; sleep 1; uv run python python-backend/main.py"
+waitForPort = 9000
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"
@@ -60,6 +60,10 @@ externalPort = 4200
 [[ports]]
 localPort = 8090
 externalPort = 3003
+
+[[ports]]
+localPort = 9000
+externalPort = 9000
 
 [[ports]]
 localPort = 23183

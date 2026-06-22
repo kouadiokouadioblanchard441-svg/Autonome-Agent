@@ -3,7 +3,7 @@ import { db, telegramAccountsTable, telegramGroupsTable, telegramChannelsTable, 
 import { desc, gte } from "drizzle-orm";
 
 const router = Router();
-const PYTHON_URL = process.env.PYTHON_SERVICE_URL || "http://localhost:8090";
+const PYTHON_URL = process.env.PYTHON_SERVICE_URL || "http://localhost:9000";
 
 // Monitoring overview: engine status + recent activity
 router.get("/monitoring/status", async (_req, res): Promise<void> => {

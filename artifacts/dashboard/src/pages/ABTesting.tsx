@@ -171,7 +171,7 @@ export default function ABTesting() {
   async function loadCommunityTests() {
     setLoadingCommunity(true);
     try {
-      const res = await fetch("http://localhost:8090/ab-tests/community");
+      const res = await fetch("http://localhost:9000/ab-tests/community");
       if (res.ok) {
         const data = await res.json();
         setCommunityTests(data.tests ?? []);
@@ -185,7 +185,7 @@ export default function ABTesting() {
   // Record manual engagement (for dashboard testing)
   async function recordEngage(testId: number, variant: "a" | "b", kind = "reply") {
     try {
-      await fetch(`http://localhost:8090/ab-tests/${testId}/engage`, {
+      await fetch(`http://localhost:9000/ab-tests/${testId}/engage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ variant, kind }),
