@@ -1067,10 +1067,12 @@ async def cmd_ab_tests(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     lines = ["🧪 *Tests A/B*\n"]
     for t in tests:
         winner = f"🏆 Gagnant: Variante {t['winner_variant'].upper()}" if t["winner_variant"] else ""
+        rate_a = round((t['reply_rate_a'] or 0) * 100, 1)
+        rate_b = round((t['reply_rate_b'] or 0) * 100, 1)
         lines.append(
             f"{fmt_status(t['status'])} *{t['name']}*\n"
-            f"  A: {t['sent_a']} envois, {t['replies_a']} réponses ({round(t['reply_rate_a']*100,1)}%)\n"
-            f"  B: {t['sent_b']} envois, {t['replies_b']} réponses ({round(t['reply_rate_b']*100,1)}%)\n"
+            f"  A: {t['sent_a']} envois, {t['replies_a']} réponses ({rate_a}%)\n"
+            f"  B: {t['sent_b']} envois, {t['replies_b']} réponses ({rate_b}%)\n"
             f"  {winner}\n"
         )
     await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())

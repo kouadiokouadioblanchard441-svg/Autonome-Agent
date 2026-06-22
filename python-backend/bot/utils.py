@@ -33,7 +33,9 @@ async def db_execute(query: str, *args):
     return await pool.execute(query, *args)
 
 
-def fmt_status(status: str) -> str:
+def fmt_status(status) -> str:
+    if status is None:
+        return "❓ N/A"
     icons = {
         "active": "🟢", "inactive": "🔴", "cooldown": "🟡", "banned": "⛔",
         "draft": "📝", "paused": "⏸", "completed": "✅", "running": "▶️",
