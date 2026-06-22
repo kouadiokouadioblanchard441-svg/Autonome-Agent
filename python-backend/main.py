@@ -43,6 +43,8 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # Active Telethon clients per account
 active_clients: dict[int, Any] = {}
+# phone_code_hash returned by send_code_request, keyed by account_id
+pending_codes: dict[int, str] = {}
 db_pool: asyncpg.Pool | None = None
 
 
@@ -143,6 +145,15 @@ class AccountConnectRequest(BaseModel):
     account_id: int
     phone_number: str
     session_data: str | None = None
+
+class VerifyCodeRequest(BaseModel):
+    account_id: int
+    phone_number: str
+    code: str
+
+class Verify2FARequest(BaseModel):
+    account_id: int
+    password: str
 
 class SendMessageRequest(BaseModel):
     account_id: int
@@ -316,33 +327,118 @@ async def get_status():
 
 @app.post("/telegram/connect")
 async def connect_account(req: AccountConnectRequest):
-    """Connect a Telegram account via Telethon."""
+    """Step 1 — Send OTP code to the phone number via Telethon."""
     if not TELETHON_AVAILABLE:
-        return {"success": False, "message": "Telethon not available (install it first)", "simulated": True}
+        return {"success": False, "message": "Telethon not available", "simulated": True}
     if not API_ID or not API_HASH:
-        return {"success": False, "message": "Set TELEGRAM_API_ID and TELEGRAM_API_HASH secrets first", "simulated": True}
+        return {"success": False, "message": "TELEGRAM_API_ID and TELEGRAM_API_HASH non configurés", "simulated": True}
 
     try:
-        client = await get_or_create_client(req.account_id, req.phone_number, req.session_data)
-        is_authorized = await client.is_user_authorized()
-        
-        if is_authorized:
+        # Always create a fresh client for new connect requests so the session is clean
+        if req.account_id in active_clients:
+            try:
+                await active_clients[req.account_id].disconnect()
+            except Exception:
+                pass
+            del active_clients[req.account_id]
+
+        session = StringSession(req.session_data) if req.session_data else StringSession()
+        client = TelegramClient(session, int(API_ID), API_HASH)
+        await client.connect()
+        active_clients[req.account_id] = client
+
+        # If already authorized (existing session), mark connected immediately
+        if await client.is_user_authorized():
             me = await client.get_me()
+            session_string = client.session.save()
             if db_pool:
                 await db_pool.execute(
-                    """UPDATE telegram_accounts 
-                       SET is_connected = true, status = 'active', username = $2, last_seen = NOW()
+                    """UPDATE telegram_accounts
+                       SET is_connected = true, status = 'active', username = $2,
+                           session_data = $3, last_seen = NOW()
                        WHERE id = $1""",
-                    req.account_id, me.username if me else None
+                    req.account_id, me.username if me else None, session_string
                 )
-            return {"success": True, "message": "Account connected", "username": me.username if me else None}
-        else:
-            await client.send_code_request(req.phone_number)
-            return {"success": True, "message": "OTP code sent", "needs_code": True}
+            return {"success": True, "message": "Compte déjà connecté", "needs_code": False, "username": me.username if me else None}
+
+        # Send OTP — store phone_code_hash for the verify step
+        result = await client.send_code_request(req.phone_number)
+        pending_codes[req.account_id] = result.phone_code_hash
+        logger.info(f"OTP envoyé au compte {req.account_id}, hash stocké")
+        return {"success": True, "message": "Code OTP envoyé sur votre Telegram", "needs_code": True}
+
     except Exception as e:
-        logger.error(f"Connection failed for account {req.account_id}: {e}")
+        logger.error(f"Connexion échouée pour le compte {req.account_id}: {e}")
         await log_security_event("bot_detected", "high", f"Connection error: {str(e)}", req.account_id)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/telegram/verify")
+async def verify_code(req: VerifyCodeRequest):
+    """Step 2 — Verify the OTP code and complete sign-in."""
+    phone_code_hash = pending_codes.get(req.account_id)
+    if not phone_code_hash:
+        raise HTTPException(status_code=400, detail="Aucun code en attente. Demandez un nouveau code d'abord.")
+
+    client = active_clients.get(req.account_id)
+    if not client:
+        raise HTTPException(status_code=400, detail="Aucun client actif. Relancez la connexion.")
+
+    try:
+        from telethon.errors import SessionPasswordNeededError
+        await client.sign_in(req.phone_number, req.code, phone_code_hash=phone_code_hash)
+
+        me = await client.get_me()
+        session_string = client.session.save()
+        pending_codes.pop(req.account_id, None)
+
+        if db_pool:
+            await db_pool.execute(
+                """UPDATE telegram_accounts
+                   SET is_connected = true, status = 'active', username = $2,
+                       session_data = $3, last_seen = NOW()
+                   WHERE id = $1""",
+                req.account_id, me.username if me else None, session_string
+            )
+        logger.info(f"Compte {req.account_id} connecté avec succès (@{me.username if me else '?'})")
+        return {"success": True, "message": "Compte connecté avec succès", "needs_2fa": False, "username": me.username if me else None}
+
+    except Exception as e:
+        err = str(e)
+        # Telegram requires 2FA password
+        if "SessionPasswordNeeded" in err or "two-step" in err.lower():
+            logger.info(f"Compte {req.account_id} nécessite 2FA")
+            return {"success": False, "needs_2fa": True, "message": "Mot de passe 2FA requis"}
+        logger.error(f"Vérification code échouée pour compte {req.account_id}: {e}")
+        raise HTTPException(status_code=400, detail=err)
+
+
+@app.post("/telegram/verify-2fa")
+async def verify_2fa(req: Verify2FARequest):
+    """Step 3 (optional) — Verify the 2FA password."""
+    client = active_clients.get(req.account_id)
+    if not client:
+        raise HTTPException(status_code=400, detail="Aucun client actif. Relancez la connexion.")
+
+    try:
+        await client.sign_in(password=req.password)
+        me = await client.get_me()
+        session_string = client.session.save()
+
+        if db_pool:
+            await db_pool.execute(
+                """UPDATE telegram_accounts
+                   SET is_connected = true, status = 'active', username = $2,
+                       session_data = $3, last_seen = NOW()
+                   WHERE id = $1""",
+                req.account_id, me.username if me else None, session_string
+            )
+        logger.info(f"Compte {req.account_id} connecté via 2FA (@{me.username if me else '?'})")
+        return {"success": True, "message": "Compte connecté avec succès (2FA)", "username": me.username if me else None}
+
+    except Exception as e:
+        logger.error(f"2FA échoué pour compte {req.account_id}: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/telegram/send")
