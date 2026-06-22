@@ -643,10 +643,16 @@ async def cmd_generate(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             resp = await client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "Tu es un expert en communication Telegram. Génère un message court, naturel et engageant en français."},
-                    {"role": "user", "content": f"Type: {msg_type}. Contexte: {context or 'général'}. Génère un message Telegram."},
+                    {"role": "system", "content": (
+                        "Tu es un expert en communication Telegram. "
+                        "Génère un post long, riche et engageant en français. "
+                        "Minimum 300 mots, idéalement entre 400 et 800 mots. "
+                        "Structure en plusieurs paragraphes. Pas de markdown (**, ##). "
+                        "Contenu concret, utile, avec exemples et analyse."
+                    )},
+                    {"role": "user", "content": f"Type: {msg_type}. Contexte: {context or 'général'}. Génère un post Telegram complet et détaillé."},
                 ],
-                max_tokens=200,
+                max_tokens=1500,
             )
             content = resp.choices[0].message.content
         except Exception as e:

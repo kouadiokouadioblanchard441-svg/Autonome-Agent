@@ -83,7 +83,7 @@ async def generate_text_with_trust(
     language: str = "fr",
     content_idea: str = "",
     personality_prompt: str = "",
-    max_tokens: int = 400,
+    max_tokens: int = 1500,
     append_badge: bool = False,
 ):
     """
@@ -106,7 +106,7 @@ async def generate_text(
     language: str = "fr",
     content_idea: str = "",
     personality_prompt: str = "",
-    max_tokens: int = 400,
+    max_tokens: int = 1500,
 ) -> str:
     """Generate a post text using OpenAI or Gemini."""
 
@@ -114,11 +114,14 @@ async def generate_text(
     lang_name = lang_map.get(language, language)
     system = personality_prompt or TONE_PROMPTS.get(tone, TONE_PROMPTS["casual"])
     user_prompt = (
-        f"Écris un post Telegram naturel sur le sujet: {topic}.\n"
+        f"Écris un post Telegram riche et détaillé sur le sujet: {topic}.\n"
         f"Idée de contenu: {content_idea or 'libre'}\n"
         f"Langue: {lang_name}\n"
-        f"Important: NE PAS mettre de titre, NE PAS utiliser de markdown. "
-        f"Longueur: 3-6 phrases naturelles. Pas de hashtags sauf si le ton est crypto/casual."
+        f"Important: NE PAS mettre de titre en gras, NE PAS utiliser de markdown (pas de **, __, ##). "
+        f"Longueur OBLIGATOIRE: minimum 300 mots, idéalement entre 400 et 800 mots. "
+        f"Structure le texte en plusieurs paragraphes distincts séparés par une ligne vide. "
+        f"Chaque paragraphe doit apporter une valeur ajoutée (contexte, analyse, conseil, exemple concret, perspective). "
+        f"Pas de hashtags sauf si le ton est crypto/casual (3 max à la fin)."
     )
 
     # Try OpenAI first
@@ -148,7 +151,8 @@ async def generate_text(
             genai.configure(api_key=GEMINI_API_KEY)
             model = genai.GenerativeModel("gemini-1.5-flash")
             full_prompt = f"{system}\n\n{user_prompt}"
-            resp = await asyncio.to_thread(model.generate_content, full_prompt)
+            generation_config = genai.types.GenerationConfig(max_output_tokens=2000, temperature=0.85)
+            resp = await asyncio.to_thread(model.generate_content, full_prompt, generation_config=generation_config)
             text = resp.text or ""
             if text.strip():
                 return text.strip()
