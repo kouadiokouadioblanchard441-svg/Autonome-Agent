@@ -1,7 +1,6 @@
 # See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
-# compiled output
-dist
+# compiled output (dist inclus volontairement pour déploiement Plesk)
 tmp
 out-tsc
 *.tsbuildinfo
@@ -10,6 +9,7 @@ out-tsc
 
 # dependencies
 node_modules
+.pythonlibs
 
 # IDEs and editors
 /.idea
@@ -47,3 +47,9 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.venv/
