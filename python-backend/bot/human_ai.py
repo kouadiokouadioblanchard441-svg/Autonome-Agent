@@ -167,34 +167,48 @@ def get_greeting(
 # ── Emotion Detection ─────────────────────────────────────────────────────────
 
 EMOTION_KEYWORDS = {
-    "happy":    ["super", "génial", "excellent", "parfait", "merci", "top", "bravo",
-                 "cool", "great", "awesome", "thank", "merci", "شكرا", "great"],
-    "sad":      ["triste", "déprimé", "déprime", "mal", "mauvais", "pas bien",
-                 "difficult", "dur", "difficile", "sad", "حزين", "مشكلة"],
-    "angry":    ["énervé", "furieux", "nul", "idiot", "ça marche pas", "bug",
-                 "merde", "putain", "angry", "frustrated", "غاضب"],
-    "question": ["?", "comment", "pourquoi", "quand", "quoi", "qui", "où",
-                 "how", "why", "when", "what", "where", "ماذا", "كيف", "لماذا"],
     "greeting": ["bonjour", "bonsoir", "salut", "coucou", "hello", "hi", "hey",
-                 "wesh", "salam", "مرحبا", "السلام"],
-    "thanks":   ["merci", "thanks", "thank you", "شكرا", "gracias", "obrigado"],
-    "help":     ["aide", "help", "besoin", "problème", "comment faire", "peut-tu",
-                 "peux-tu", "explain", "يساعد", "مساعدة"],
+                 "wesh", "salam", "مرحبا", "السلام", "good morning", "good evening"],
+    "thanks":   ["merci", "thanks", "thank you", "شكرا", "gracias", "obrigado",
+                 "je te remercie", "je vous remercie", "trop sympa", "c'est gentil"],
+    "happy":    ["super", "génial", "excellent", "parfait", "top", "bravo",
+                 "cool", "great", "awesome", "fantastique", "incroyable", "👍", "🎉"],
+    "sad":      ["triste", "déprimé", "déprime", "mal", "mauvais", "pas bien",
+                 "difficult", "dur", "difficile", "sad", "حزين", "مشكلة", "désolé"],
+    "angry":    ["énervé", "furieux", "nul", "idiot", "ça marche pas", "bug",
+                 "merde", "putain", "angry", "frustrated", "غاضب", "c'est nul"],
+    "question": ["?", "pourquoi", "quand", "quoi", "qui", "où", "comment faire",
+                 "how", "why", "when", "what", "where", "ماذا", "كيف", "لماذا"],
+    "help":     ["aide", "help", "besoin", "problème", "peut-tu", "peux-tu",
+                 "explain", "يساعد", "مساعدة", "j'ai besoin", "i need help"],
     "love":     ["amour", "je t'aime", "love", "chéri", "beau", "belle", "💕", "❤️",
                  "أحبك", "حبيبي"],
 }
 
+# Priority order — when tie, earlier in this list wins
+_EMOTION_PRIORITY = ["greeting", "thanks", "love", "sad", "angry", "help", "happy", "question"]
+
 
 def detect_emotion(text: str) -> str:
-    """Return dominant emotion from a message."""
+    """
+    Return dominant emotion from a message.
+    Priority order: greeting > thanks > love > sad > angry > help > happy > question
+    This avoids false positives (e.g. 'bonjour comment' classified as question).
+    """
     text_lower = text.lower()
-    scores = {e: 0 for e in EMOTION_KEYWORDS}
+    scores: dict[str, int] = {e: 0 for e in EMOTION_KEYWORDS}
     for emotion, keywords in EMOTION_KEYWORDS.items():
         for kw in keywords:
             if kw in text_lower:
                 scores[emotion] += 1
-    best = max(scores, key=lambda k: scores[k])
-    return best if scores[best] > 0 else "neutral"
+
+    max_score = max(scores.values())
+    if max_score == 0:
+        return "neutral"
+
+    # Among emotions with the highest score, pick by priority
+    top = [e for e in _EMOTION_PRIORITY if scores[e] == max_score]
+    return top[0] if top else max(scores, key=lambda k: scores[k])
 
 
 # ── Conversation Memory ───────────────────────────────────────────────────────

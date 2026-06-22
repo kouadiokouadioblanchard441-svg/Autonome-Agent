@@ -176,9 +176,17 @@ def _rule_based_precheck(text: str) -> dict:
 
 def _detect_language(text: str) -> str:
     ar = sum(1 for c in text if "\u0600" <= c <= "\u06ff")
-    if ar > 5: return "ar"
-    en_words = {"the", "is", "are", "you", "how", "what", "why", "when", "i", "we", "they"}
-    if len(set(text.lower().split()) & en_words) >= 2: return "en"
+    if ar >= 3: return "ar"
+    words = set(text.lower().split())
+    en_words = {"the", "is", "are", "you", "how", "what", "why", "when", "i", "we", "they",
+                "this", "that", "have", "has", "will", "can", "be", "do", "it", "in", "of",
+                "hello", "hi", "hey", "good", "great", "thanks", "thank", "please", "ok"}
+    if len(words & en_words) >= 2: return "en"
+    es_words = {"el", "la", "los", "las", "es", "son", "que", "en", "con", "por",
+                "hola", "como", "estas", "gracias", "muy", "bien", "bueno", "para"}
+    if len(words & es_words) >= 2: return "es"
+    pt_words = {"você", "não", "sim", "como", "obrigado", "bom", "boa", "para", "com"}
+    if len(words & pt_words) >= 2: return "pt"
     return "fr"
 
 

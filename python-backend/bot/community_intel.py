@@ -76,26 +76,26 @@ TYPE_KEYWORDS: dict[str, list[str]] = {
 class CommunityProfile:
     tg_id: str
     title: str
-    chat_type: str          # "group" | "channel"
-    community_type: str     # from COMMUNITY_TYPES keys
-    community_type_label: str
-    language: str           # primary language
-    languages: list[str]    # all detected languages
-    mission: str            # AI-generated mission statement
-    objectives: list[str]   # 3-5 objectives
-    audience_type: str      # "general" | "expert" | "beginner" | "mixed"
-    tone: str               # communication tone
-    content_strategy: list[str]  # content ideas
-    posting_frequency: str  # "hourly" | "daily" | "weekly"
-    forbidden_topics: list[str]
-    admin_instructions: str
-    about: str
-    pinned_summary: str
-    keywords: list[str]
-    verified_sources: list[str]
-    custom_config: dict     # admin overrides
-    engagement_score: float
-    total_posts: int
+    chat_type: str                       # "group" | "channel"
+    community_type: str = "community"    # from COMMUNITY_TYPES keys
+    community_type_label: str = "Community"
+    language: str = "fr"                 # primary language
+    languages: list[str] = field(default_factory=list)
+    mission: str = ""                    # AI-generated mission statement
+    objectives: list[str] = field(default_factory=list)
+    audience_type: str = "general"       # "general" | "expert" | "beginner" | "mixed"
+    tone: str = "casual"                 # communication tone
+    content_strategy: list[str] = field(default_factory=list)
+    posting_frequency: str = "daily"     # "hourly" | "daily" | "weekly"
+    forbidden_topics: list[str] = field(default_factory=list)
+    admin_instructions: str = ""
+    about: str = ""
+    pinned_summary: str = ""
+    keywords: list[str] = field(default_factory=list)
+    verified_sources: list[str] = field(default_factory=list)
+    custom_config: dict = field(default_factory=dict)
+    engagement_score: float = 0.0
+    total_posts: int = 0
 
     def to_dict(self) -> dict:
         return asdict(self)
