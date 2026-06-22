@@ -1,10 +1,14 @@
 from __future__ import annotations
 import logging
 import asyncio
+import os
 from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
+
+# Pending Telethon connections: phone → {client, phone_code_hash, awaiting_password}
+_pending_connections: dict[str, dict] = {}
 
 from .utils import (
     db_fetch, db_fetchrow, db_fetchval, db_execute,
@@ -146,21 +150,214 @@ async def cmd_accounts(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 @admin_only
 async def cmd_connect(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """/connect +33612345678 — Envoie le code OTP via Telethon et attend la vérification."""
     if not ctx.args:
         await update.message.reply_text(
-            "📱 *Connecter un compte*\n\n"
-            "Usage: `/connect +33612345678`\n"
-            "Un code OTP sera envoyé sur ce numéro.",
+            "📱 *Connecter un compte Telegram*\n\n"
+            "Usage: `/connect +<indicatif><numéro>`\n\n"
+            "Exemples:\n"
+            "  `/connect +33612345678` (France)\n"
+            "  `/connect +21261234567` (Maroc)\n"
+            "  `/connect +12125551234` (USA)\n\n"
+            "Un code OTP sera envoyé sur ce numéro par Telegram.",
             parse_mode=ParseMode.MARKDOWN
         )
         return
-    phone = ctx.args[0]
-    await update.message.reply_text(
-        f"📲 Connexion en cours pour `{phone}`...\n"
-        f"Un code OTP va être envoyé par Telegram.\n\n"
-        f"Ensuite utilise: `/otp {phone} <code>`",
+
+    phone = ctx.args[0].strip()
+    if not phone.startswith("+"):
+        await update.message.reply_text(
+            "❌ Le numéro doit commencer par `+` et l'indicatif pays.\n"
+            "Exemple: `/connect +33612345678`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    API_ID   = os.getenv("TELEGRAM_API_ID")
+    API_HASH = os.getenv("TELEGRAM_API_HASH")
+    if not API_ID or not API_HASH:
+        await update.message.reply_text("❌ TELEGRAM_API_ID/HASH non configurés dans les secrets.", parse_mode=ParseMode.MARKDOWN)
+        return
+
+    msg = await update.message.reply_text(
+        f"📲 Envoi du code OTP vers `{phone}`...\n_Connexion à Telegram en cours..._",
         parse_mode=ParseMode.MARKDOWN
     )
+
+    try:
+        from telethon import TelegramClient
+        from telethon.sessions import StringSession
+
+        client = TelegramClient(StringSession(), int(API_ID), API_HASH)
+        await client.connect()
+        result = await client.send_code_request(phone)
+
+        _pending_connections[phone] = {
+            "client": client,
+            "phone_code_hash": result.phone_code_hash,
+            "awaiting_password": False,
+        }
+
+        await msg.edit_text(
+            f"✅ *Code OTP envoyé sur `{phone}`!*\n\n"
+            f"Ouvre Telegram sur ce téléphone, copie le code reçu et entre:\n\n"
+            f"`/otp {phone} <code>`\n\n"
+            f"Exemple: `/otp {phone} 12345`\n\n"
+            f"⚠️ Le code expire dans 5 minutes.",
+            parse_mode=ParseMode.MARKDOWN
+        )
+
+    except Exception as e:
+        logger.error("cmd_connect error for %s: %s", phone, e)
+        await msg.edit_text(
+            f"❌ *Échec de l'envoi du code*\n\n`{e}`\n\n"
+            f"Vérifie que le numéro est correct (avec indicatif +XX).",
+            parse_mode=ParseMode.MARKDOWN
+        )
+
+
+async def _save_session(client, phone: str, msg) -> bool:
+    """Save Telethon StringSession to DB after successful sign-in. Returns True on success."""
+    try:
+        session_string = client.session.save()
+        me = await client.get_me()
+        username     = getattr(me, "username", None) or ""
+        first_name   = getattr(me, "first_name", "") or ""
+        last_name    = getattr(me, "last_name", "") or ""
+        display_name = f"{first_name} {last_name}".strip()
+
+        await db_execute(
+            """INSERT INTO telegram_accounts
+               (phone_number, username, display_name, session_data, status, is_connected, health_score)
+               VALUES ($1, $2, $3, $4, 'active', true, 100)
+               ON CONFLICT (phone_number) DO UPDATE SET
+                 username     = EXCLUDED.username,
+                 display_name = EXCLUDED.display_name,
+                 session_data = EXCLUDED.session_data,
+                 status       = 'active',
+                 is_connected = true,
+                 health_score = 100,
+                 last_seen    = NOW()""",
+            phone, username, display_name, session_string,
+        )
+
+        mention = f"@{username}" if username else display_name or phone
+        await msg.edit_text(
+            f"✅ *Compte connecté avec succès!*\n\n"
+            f"📱 Numéro: `{phone}`\n"
+            f"👤 Compte: {mention}\n"
+            f"🎯 Nom: {display_name or '—'}\n\n"
+            f"🤖 L'engine autonome démarre automatiquement.\n"
+            f"Utilise `/accounts` pour voir tes comptes.",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=back_to_menu_kb()
+        )
+        logger.info("✅ Account connected: %s (@%s)", phone, username)
+        return True
+    except Exception as e:
+        logger.error("_save_session failed for %s: %s", phone, e)
+        await msg.edit_text(
+            f"❌ Connexion réussie mais erreur de sauvegarde:\n`{e}`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return False
+
+
+@admin_only
+async def cmd_otp(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """/otp +33612345678 12345 — Valide le code OTP et connecte le compte."""
+    args = ctx.args or []
+    if len(args) < 2:
+        await update.message.reply_text(
+            "❌ Usage: `/otp <téléphone> <code>`\n\n"
+            "Exemple: `/otp +33612345678 12345`\n\n"
+            "Lance d'abord `/connect +33612345678` pour recevoir le code.",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    phone = args[0].strip()
+    code  = args[1].strip()
+    pending = _pending_connections.get(phone)
+
+    if not pending:
+        await update.message.reply_text(
+            f"❌ Aucune connexion en attente pour `{phone}`.\n\n"
+            f"Lance d'abord: `/connect {phone}`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    msg = await update.message.reply_text("🔐 Vérification du code OTP...", parse_mode=ParseMode.MARKDOWN)
+    client           = pending["client"]
+    phone_code_hash  = pending["phone_code_hash"]
+
+    try:
+        from telethon.errors import SessionPasswordNeededError
+        await client.sign_in(phone, code, phone_code_hash=phone_code_hash)
+
+    except Exception as e:
+        err_str = str(e).lower()
+        if "password" in err_str or "two" in err_str or "2fa" in err_str:
+            pending["awaiting_password"] = True
+            await msg.edit_text(
+                "🔒 *Authentification à deux facteurs (2FA) requise!*\n\n"
+                f"Entre ton mot de passe 2FA Telegram:\n"
+                f"`/password {phone} <mot_de_passe>`\n\n"
+                f"Exemple: `/password {phone} MonMotDePasse123`",
+                parse_mode=ParseMode.MARKDOWN
+            )
+        else:
+            await msg.edit_text(
+                f"❌ *Code invalide ou expiré*\n\n`{e}`\n\n"
+                f"Renvoie le code avec `/connect {phone}`",
+                parse_mode=ParseMode.MARKDOWN
+            )
+        return
+
+    await _save_session(client, phone, msg)
+    _pending_connections.pop(phone, None)
+
+
+@admin_only
+async def cmd_password(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """/password +33612345678 <motdepasse> — Entre le mot de passe 2FA Telegram."""
+    args = ctx.args or []
+    if len(args) < 2:
+        await update.message.reply_text(
+            "❌ Usage: `/password <téléphone> <mot_de_passe_2fa>`\n\n"
+            "Exemple: `/password +33612345678 MonMotDePasse`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    phone    = args[0].strip()
+    password = " ".join(args[1:]).strip()
+    pending  = _pending_connections.get(phone)
+
+    if not pending:
+        await update.message.reply_text(
+            f"❌ Aucune session 2FA en attente pour `{phone}`.\n"
+            f"Lance d'abord `/connect {phone}`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    msg    = await update.message.reply_text("🔐 Vérification du mot de passe 2FA...", parse_mode=ParseMode.MARKDOWN)
+    client = pending["client"]
+
+    try:
+        await client.sign_in(password=password)
+    except Exception as e:
+        await msg.edit_text(
+            f"❌ *Mot de passe incorrect*\n\n`{e}`\n\n"
+            f"Réessaie: `/password {phone} <mot_de_passe>`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    await _save_session(client, phone, msg)
+    _pending_connections.pop(phone, None)
 
 
 @admin_only
@@ -805,6 +1002,16 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("⛔ Accès refusé.")
         return
 
+    # ── CRITICAL FIX ──────────────────────────────────────────────────────────
+    # When a callback fires, update.message is None. Commands use
+    # update.message.reply_text(...) and crash silently. Patch _message so
+    # all command functions work when called from a callback context.
+    try:
+        update._message = query.message
+    except Exception:
+        pass
+    # ──────────────────────────────────────────────────────────────────────────
+
     data = query.data
 
     if data == "main_menu":
@@ -847,6 +1054,27 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         acc_id = int(data.split("_")[1])
         await db_execute("UPDATE telegram_accounts SET is_connected = false, status = 'inactive' WHERE id = $1", acc_id)
         await query.edit_message_text(f"🔴 Compte `{acc_id}` déconnecté.", parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+    elif data == "add_account" or data.startswith("connect_"):
+        # connect_<acc_id> = reconnect existing | add_account = new connection
+        if data.startswith("connect_") and data != "connect_":
+            acc_id = int(data.split("_")[1])
+            acc = await db_fetchrow("SELECT phone_number FROM telegram_accounts WHERE id = $1", acc_id)
+            phone_hint = f"\n\n📱 Numéro du compte: `{acc['phone_number']}`" if acc else ""
+        else:
+            phone_hint = ""
+        await query.edit_message_text(
+            f"📱 *Connecter un compte Telegram*{phone_hint}\n\n"
+            f"1️⃣ Tape: `/connect +<indicatif><numéro>`\n"
+            f"   Exemple: `/connect +33612345678`\n\n"
+            f"2️⃣ Reçois le code OTP sur Telegram\n\n"
+            f"3️⃣ Valide avec: `/otp +numéro <code>`\n"
+            f"   Exemple: `/otp +33612345678 12345`\n\n"
+            f"Si tu as un mot de passe 2FA:\n"
+            f"`/password +numéro <mot_de_passe>`",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=back_to_menu_kb()
+        )
 
     elif data == "campaigns":
         campaigns = await db_fetch("SELECT id, name, status, messages_sent FROM campaigns ORDER BY created_at DESC")
@@ -987,15 +1215,6 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             "Utilise la commande:\n`/generate <type> <contexte>`\n\n"
             "Types: `motivation` | `crypto` | `welcome` | `general`\n\n"
             "Exemple:\n`/generate crypto Bitcoin vient de toucher un ATH`",
-            parse_mode=ParseMode.MARKDOWN,
-            reply_markup=back_to_menu_kb()
-        )
-
-    elif data == "add_account":
-        await query.edit_message_text(
-            "📱 *Ajouter un compte Telegram*\n\n"
-            "Utilise la commande:\n`/connect +<indicatif><numéro>`\n\n"
-            "Exemple:\n`/connect +33612345678`",
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=back_to_menu_kb()
         )

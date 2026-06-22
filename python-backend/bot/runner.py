@@ -17,6 +17,8 @@ from .commands import (
     cmd_escalations, cmd_resolve_escalation,
     cmd_proxies, cmd_schedules, cmd_warmup,
     cmd_memories, cmd_settings, cmd_help,
+    # Account connection commands
+    cmd_otp, cmd_password,
     # Autonomous engine commands
     cmd_autonomous, cmd_post_now, cmd_autopost, cmd_autoreply, cmd_generate_image,
     # Persona commands
@@ -36,6 +38,8 @@ COMMANDS = [
     BotCommand("status", "Statut du système"),
     BotCommand("accounts", "Gérer les comptes Telegram"),
     BotCommand("connect", "Connecter un compte: /connect +33612345678"),
+    BotCommand("otp", "Valider OTP: /otp +33612345678 12345"),
+    BotCommand("password", "2FA: /password +33612345678 <motdepasse>"),
     BotCommand("disconnect", "Déconnecter: /disconnect <id>"),
     BotCommand("health", "Santé des comptes"),
     BotCommand("campaigns", "Liste des campagnes"),
@@ -95,6 +99,8 @@ async def build_app() -> Application:
 
     app.add_handler(CommandHandler("accounts", cmd_accounts))
     app.add_handler(CommandHandler("connect", cmd_connect))
+    app.add_handler(CommandHandler("otp", cmd_otp))
+    app.add_handler(CommandHandler("password", cmd_password))
     app.add_handler(CommandHandler("disconnect", cmd_disconnect))
     app.add_handler(CommandHandler("health", cmd_health))
 
