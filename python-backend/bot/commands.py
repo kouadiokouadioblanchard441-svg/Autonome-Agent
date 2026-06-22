@@ -27,10 +27,13 @@ def admin_only(func):
     async def wrapper(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         user = update.effective_user
         if not user or not is_admin(user.id):
+            uid = user.id if user else "?"
+            logger.warning("admin_only REFUS: user_id=%s pour /%s", uid, func.__name__)
             msg = update.message or (update.callback_query and update.callback_query.message)
             if msg:
-                await msg.reply_text("⛔ Accès refusé. Tu n'es pas administrateur.")
+                await msg.reply_text(f"⛔ Accès refusé. Ton ID Telegram: `{uid}`", parse_mode=ParseMode.MARKDOWN)
             return
+        logger.info("admin_only OK: user_id=%s pour /%s", user.id, func.__name__)
         return await func(update, ctx)
     return wrapper
 
@@ -184,13 +187,15 @@ async def cmd_connect(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN
     )
 
+    logger.info("cmd_connect: demande OTP pour %s", phone)
     try:
         from telethon import TelegramClient
         from telethon.sessions import StringSession
 
-        # Always disconnect and destroy any previous pending client for this phone
+        # Disconnect and destroy any previous pending client for this phone
         # to avoid Telegram invalidating the new code due to duplicate sessions
         if phone in _pending_connections:
+            logger.info("cmd_connect: nettoyage ancienne session pour %s", phone)
             old_client = _pending_connections.pop(phone, {}).get("client")
             if old_client:
                 try:
@@ -204,13 +209,18 @@ async def cmd_connect(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             retry_delay=1,
             auto_reconnect=True,
         )
+        logger.info("cmd_connect: connexion à Telegram pour %s...", phone)
         await client.connect()
+        logger.info("cmd_connect: send_code_request pour %s...", phone)
         result = await client.send_code_request(phone)
+        logger.info("cmd_connect: code envoyé pour %s, hash=%s", phone, result.phone_code_hash[:8] + "...")
 
+        import time
         _pending_connections[phone] = {
             "client": client,
             "phone_code_hash": result.phone_code_hash,
             "awaiting_password": False,
+            "created_at": time.time(),
         }
 
         await msg.edit_text(
@@ -218,12 +228,12 @@ async def cmd_connect(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             f"Ouvre Telegram sur ce téléphone, copie le code reçu et entre:\n\n"
             f"`/otp {phone} <code>`\n\n"
             f"Exemple: `/otp {phone} 12345`\n\n"
-            f"⚠️ Le code expire dans 5 minutes.",
+            f"⏱️ *Entre le code dans les 3 minutes* (il expire vite).",
             parse_mode=ParseMode.MARKDOWN
         )
 
     except Exception as e:
-        logger.error("cmd_connect error for %s: %s", phone, e)
+        logger.error("cmd_connect ERREUR pour %s: %s", phone, e, exc_info=True)
         await msg.edit_text(
             f"❌ *Échec de l'envoi du code*\n\n`{e}`\n\n"
             f"Vérifie que le numéro est correct (avec indicatif +XX).",
@@ -313,20 +323,29 @@ async def cmd_otp(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    import time as _time
+    age = _time.time() - pending.get("created_at", _time.time())
+    logger.info("cmd_otp: phone=%s code=%s age_session=%.0fs connected=%s",
+                phone, code, age, pending["client"].is_connected())
+
+    if age > 270:  # warn if > 4m30s
+        logger.warning("cmd_otp: session de %s a %.0f secondes — risque d'expiration!", phone, age)
+
     msg = await update.message.reply_text("🔐 Vérification du code OTP...", parse_mode=ParseMode.MARKDOWN)
     client           = pending["client"]
     phone_code_hash  = pending["phone_code_hash"]
 
     try:
         from telethon.errors import SessionPasswordNeededError
-        # Ensure the client is still connected before sign_in
-        # (the TCP connection can drop while waiting for the user to enter the code)
-        if not client.is_connected():
-            logger.info("Client déconnecté pour %s — reconnexion avant sign_in", phone)
-            await client.connect()
+        # NOTE: Do NOT call client.connect() here — creating a fresh connection would
+        # generate a new auth key, invalidating the phone_code_hash from the previous session.
+        # Telethon's auto_reconnect=True handles reconnection transparently in sign_in().
+        logger.info("cmd_otp: appel sign_in pour %s avec hash=%s", phone, phone_code_hash[:8] + "...")
         await client.sign_in(phone, code, phone_code_hash=phone_code_hash)
+        logger.info("cmd_otp: sign_in réussi pour %s", phone)
 
     except Exception as e:
+        logger.error("cmd_otp ERREUR pour %s: %s", phone, e)
         err_str = str(e).lower()
         if "password" in err_str or "two" in err_str or "2fa" in err_str:
             pending["awaiting_password"] = True
@@ -337,9 +356,17 @@ async def cmd_otp(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 f"Exemple: `/password {phone} MonMotDePasse123`",
                 parse_mode=ParseMode.MARKDOWN
             )
+        elif "expired" in err_str:
+            await msg.edit_text(
+                f"⏰ *Code expiré*\n\n"
+                f"Le code a plus de 5 minutes. Demande un nouveau:\n\n"
+                f"`/connect {phone}`\n\n"
+                f"⚡ *Cette fois, entre le code dans les 2 minutes!*",
+                parse_mode=ParseMode.MARKDOWN
+            )
         else:
             await msg.edit_text(
-                f"❌ *Code invalide ou expiré*\n\n`{e}`\n\n"
+                f"❌ *Code invalide*\n\n`{e}`\n\n"
                 f"Renvoie le code avec `/connect {phone}`",
                 parse_mode=ParseMode.MARKDOWN
             )
