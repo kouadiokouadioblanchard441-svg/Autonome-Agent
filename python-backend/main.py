@@ -403,7 +403,9 @@ async def verify_code(req: VerifyCodeRequest):
 
     try:
         from telethon.errors import SessionPasswordNeededError
-        await client.sign_in(req.phone_number, req.code, phone_code_hash=phone_code_hash)
+        # Sanitize: keep digits only (handles spaces, dots, dashes Telegram may show)
+        clean_code = "".join(filter(str.isdigit, req.code))
+        await client.sign_in(req.phone_number, clean_code, phone_code_hash=phone_code_hash)
 
         me = await client.get_me()
         session_string = client.session.save()

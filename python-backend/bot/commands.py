@@ -277,7 +277,17 @@ async def cmd_otp(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     phone = args[0].strip()
-    code  = args[1].strip()
+    # Join all remaining args in case user typed code with spaces (e.g. "1 2 3 4 5")
+    # Then strip everything except digits
+    raw_code = " ".join(args[1:]).strip()
+    code = "".join(filter(str.isdigit, raw_code))
+    if not code:
+        await update.message.reply_text(
+            "❌ Code invalide — entre uniquement les chiffres.\n\n"
+            f"Exemple: `/otp {phone} 12345`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
     pending = _pending_connections.get(phone)
 
     if not pending:
