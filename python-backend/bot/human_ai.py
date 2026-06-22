@@ -512,16 +512,18 @@ async def _call_ai(messages: list[dict], lang: str) -> str:
     # Fallback to Gemini
     if GEMINI_API_KEY:
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=GEMINI_API_KEY)
-            model = genai.GenerativeModel("gemini-2.0-flash")
+            from google import genai
+            client = genai.Client(api_key=GEMINI_API_KEY)
             sys_msg = next((m["content"] for m in messages if m["role"] == "system"), "")
             user_msgs = [m for m in messages if m["role"] != "system"]
             full_prompt = sys_msg + "\n\n" + "\n".join(
                 f"{'User' if m['role']=='user' else 'Assistant'}: {m['content']}"
                 for m in user_msgs[-5:]
             )
-            resp = await model.generate_content_async(full_prompt)
+            resp = await client.aio.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=full_prompt,
+            )
             return (resp.text or "").strip()
         except Exception as e:
             logger.warning("Gemini humanoid response failed: %s", e)

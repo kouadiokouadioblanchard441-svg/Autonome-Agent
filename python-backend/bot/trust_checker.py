@@ -249,11 +249,13 @@ async def _ai_analysis(text: str, precheck: dict) -> Optional[dict]:
     # Fallback: Gemini
     if GEMINI_API_KEY:
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=GEMINI_API_KEY)
-            model = genai.GenerativeModel("gemini-2.0-flash")
+            from google import genai
+            client = genai.Client(api_key=GEMINI_API_KEY)
             full = TRUST_SYSTEM_PROMPT + "\n\n" + prompt
-            resp = await model.generate_content_async(full)
+            resp = await client.aio.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=full,
+            )
             raw = resp.text or "{}"
             raw = raw.strip().strip("```json").strip("```").strip()
             return json.loads(raw)

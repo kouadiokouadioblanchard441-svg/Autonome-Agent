@@ -147,12 +147,14 @@ async def generate_text(
     # Fallback: Gemini
     if GEMINI_API_KEY:
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=GEMINI_API_KEY)
-            model = genai.GenerativeModel("gemini-1.5-flash")
+            from google import genai
+            client = genai.Client(api_key=GEMINI_API_KEY)
             full_prompt = f"{system}\n\n{user_prompt}"
-            generation_config = genai.types.GenerationConfig(max_output_tokens=2000, temperature=0.85)
-            resp = await asyncio.to_thread(model.generate_content, full_prompt, generation_config=generation_config)
+            resp = await client.aio.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=full_prompt,
+                config={"max_output_tokens": 2000, "temperature": 0.85},
+            )
             text = resp.text or ""
             if text.strip():
                 return text.strip()
