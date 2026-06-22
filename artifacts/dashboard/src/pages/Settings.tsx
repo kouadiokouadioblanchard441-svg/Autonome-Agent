@@ -65,6 +65,20 @@ const GROUPS: {
       { label: "Gemini (gratuit) → aistudio.google.com", url: "https://aistudio.google.com" },
     ],
   },
+  {
+    id: "database",
+    label: "Base de données Supabase",
+    icon: Database,
+    color: "text-orange-400",
+    bg: "bg-orange-500/5",
+    border: "border-orange-500/30",
+    importance: "required",
+    description: "PostgreSQL hébergé sur Supabase — stocke tous tes comptes, messages, campagnes, leads, etc.",
+    keys: ["SUPABASE_DATABASE_URL"],
+    whereToFind: [
+      { label: "Tableau de bord Supabase → app.supabase.com", url: "https://app.supabase.com" },
+    ],
+  },
 ];
 
 // ─── Where to find each key ────────────────────────────────────────────────
@@ -131,6 +145,16 @@ const KEY_WHERE: Record<string, { steps: string[]; url?: string; urlLabel?: stri
     ],
     url: "https://aistudio.google.com",
     urlLabel: "Ouvrir Google AI Studio",
+  },
+  SUPABASE_DATABASE_URL: {
+    steps: [
+      "Va sur app.supabase.com → ton projet",
+      "Settings → Database → Connection string",
+      "Sélectionne « URI » avec le mode Transaction (port 6543)",
+      "Copie l'URL complète (commence par postgresql://...)",
+    ],
+    url: "https://app.supabase.com",
+    urlLabel: "Ouvrir Supabase",
   },
 };
 

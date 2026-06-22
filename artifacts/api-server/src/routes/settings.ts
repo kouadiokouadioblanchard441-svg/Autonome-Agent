@@ -12,6 +12,7 @@ const ENV_VAR_CATALOG: Record<string, { label: string; description: string; isSe
   ADMIN_TELEGRAM_ID:       { label: "Admin Telegram ID",      isSecret: false, description: "Ton identifiant Telegram numérique — seul toi peux contrôler le bot" },
   OPENAI_API_KEY:          { label: "OpenAI API Key",         isSecret: true,  description: "Clé d'accès GPT-4o (platform.openai.com)", howTo: "platform.openai.com → API Keys" },
   GEMINI_API_KEY:          { label: "Gemini API Key",         isSecret: true,  description: "Clé Google AI Studio — fallback si OpenAI échoue (aistudio.google.com)", howTo: "aistudio.google.com → Get API key" },
+  SUPABASE_DATABASE_URL:   { label: "Database URL (Supabase)", isSecret: true, description: "URL de connexion directe PostgreSQL via pgBouncer (Settings → Database → Connection string)" },
 };
 
 const router = Router();

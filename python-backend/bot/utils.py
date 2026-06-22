@@ -2,7 +2,7 @@ from __future__ import annotations
 import os
 import asyncpg
 
-DATABASE_URL = os.getenv("DATABASE_URL", "")
+DATABASE_URL = os.getenv("SUPABASE_DATABASE_URL") or os.getenv("DATABASE_URL", "")
 _pool: asyncpg.Pool | None = None
 
 
