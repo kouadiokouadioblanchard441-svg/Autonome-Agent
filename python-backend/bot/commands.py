@@ -153,21 +153,26 @@ async def cmd_accounts(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 @admin_only
 async def cmd_connect(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    """/connect +33612345678 — Envoie le code OTP via Telethon et attend la vérification."""
-    if not ctx.args:
+    """/connect +33612345678 [code] — Envoie l'OTP ou vérifie directement si le code est fourni."""
+    args = ctx.args or []
+    if not args:
         await update.message.reply_text(
             "📱 *Connecter un compte Telegram*\n\n"
-            "Usage: `/connect +<indicatif><numéro>`\n\n"
+            "✅ *Étape 1 — Demander le code:*\n"
+            "`/connect +<indicatif><numéro>`\n\n"
+            "✅ *Étape 2 — Valider le code reçu:*\n"
+            "`/connect +<numéro> <code>`\n"
+            "ou: `/otp +<numéro> <code>`\n\n"
             "Exemples:\n"
-            "  `/connect +33612345678` (France)\n"
-            "  `/connect +21261234567` (Maroc)\n"
-            "  `/connect +12125551234` (USA)\n\n"
+            "  `/connect +33612345678`\n"
+            "  `/connect +33612345678 12345`\n\n"
             "Un code OTP sera envoyé sur ce numéro par Telegram.",
             parse_mode=ParseMode.MARKDOWN
         )
         return
 
-    phone = ctx.args[0].strip()
+    # Strip any trailing punctuation that Telegram auto-formatting can add
+    phone = args[0].strip().rstrip(".,;:!?")
     if not phone.startswith("+"):
         await update.message.reply_text(
             "❌ Le numéro doit commencer par `+` et l'indicatif pays.\n"
@@ -182,6 +187,64 @@ async def cmd_connect(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ TELEGRAM_API_ID/HASH non configurés dans les secrets.", parse_mode=ParseMode.MARKDOWN)
         return
 
+    # ── Mode 2-en-1 : /connect +phone code ──────────────────────────────────────
+    # If user provides phone + code in a single command, verify directly
+    if len(args) >= 2:
+        code_arg = "".join(filter(str.isdigit, args[1]))
+        if code_arg and len(code_arg) >= 4:
+            pending = _pending_connections.get(phone)
+            if pending:
+                # Pending connection exists — verify without sending a new OTP
+                logger.info("cmd_connect: code fourni en ligne, vérification directe pour %s", phone)
+                msg = await update.message.reply_text(
+                    f"🔐 Vérification du code `{code_arg}` pour `{phone}`...",
+                    parse_mode=ParseMode.MARKDOWN
+                )
+                client          = pending["client"]
+                phone_code_hash = pending["phone_code_hash"]
+                try:
+                    from telethon.errors import SessionPasswordNeededError
+                    await client.sign_in(phone, code_arg, phone_code_hash=phone_code_hash)
+                    logger.info("cmd_connect: sign_in réussi pour %s", phone)
+                    await _save_session(client, phone, msg)
+                    _pending_connections.pop(phone, None)
+                except Exception as e:
+                    err_str = str(e).lower()
+                    if "password" in err_str or "two" in err_str or "2fa" in err_str:
+                        pending["awaiting_password"] = True
+                        await msg.edit_text(
+                            "🔒 *2FA requis!*\n\n"
+                            f"Entre ton mot de passe Telegram:\n"
+                            f"`/password {phone} <mot_de_passe>`",
+                            parse_mode=ParseMode.MARKDOWN
+                        )
+                    elif "expired" in err_str or "invalid" in err_str:
+                        await msg.edit_text(
+                            "⏰ *Code expiré ou invalide*\n\n"
+                            f"Demande un nouveau code:\n`/connect {phone}`\n\n"
+                            "Puis entre-le rapidement avec:\n"
+                            f"`/connect {phone} <nouveau_code>`",
+                            parse_mode=ParseMode.MARKDOWN
+                        )
+                    else:
+                        await msg.edit_text(
+                            f"❌ Erreur: `{e}`\n\n"
+                            f"Réessaie avec: `/connect {phone}`",
+                            parse_mode=ParseMode.MARKDOWN
+                        )
+                return
+            else:
+                # No pending session — warn user and offer to send a new OTP
+                await update.message.reply_text(
+                    f"⚠️ *Aucun code en attente pour `{phone}`*\n\n"
+                    f"Le code `{code_arg}` ne peut pas être utilisé sans session active.\n\n"
+                    f"🔄 *Reçois un nouveau code:*\n`/connect {phone}`\n\n"
+                    f"Puis entre-le *dans les 3 minutes*:\n`/connect {phone} <nouveau_code>`",
+                    parse_mode=ParseMode.MARKDOWN
+                )
+                return
+
+    # ── Mode normal : /connect +phone → envoie OTP ──────────────────────────────
     msg = await update.message.reply_text(
         f"📲 Envoi du code OTP vers `{phone}`...\n_Connexion à Telegram en cours..._",
         parse_mode=ParseMode.MARKDOWN
@@ -225,10 +288,11 @@ async def cmd_connect(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
         await msg.edit_text(
             f"✅ *Code OTP envoyé sur `{phone}`!*\n\n"
-            f"Ouvre Telegram sur ce téléphone, copie le code reçu et entre:\n\n"
-            f"`/otp {phone} <code>`\n\n"
-            f"Exemple: `/otp {phone} 12345`\n\n"
-            f"⏱️ *Entre le code dans les 3 minutes* (il expire vite).",
+            f"📲 Ouvre Telegram et copie le code reçu, puis entre:\n\n"
+            f"`/connect {phone} <code>`\n\n"
+            f"Exemple si le code est 12345:\n"
+            f"`/connect {phone} 12345`\n\n"
+            f"⏱️ *Entre le code dans les 3 minutes.*",
             parse_mode=ParseMode.MARKDOWN
         )
 
@@ -236,7 +300,7 @@ async def cmd_connect(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         logger.error("cmd_connect ERREUR pour %s: %s", phone, e, exc_info=True)
         await msg.edit_text(
             f"❌ *Échec de l'envoi du code*\n\n`{e}`\n\n"
-            f"Vérifie que le numéro est correct (avec indicatif +XX).",
+            f"Vérifie que le numéro est correct (format: `+447490358072`).",
             parse_mode=ParseMode.MARKDOWN
         )
 
