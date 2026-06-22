@@ -170,31 +170,73 @@ async def run_bot_polling(stop_event=None):
         return
 
     import asyncio
-    app = await build_app()
-    await app.initialize()
 
-    # Force-delete any existing webhook and clear conflict state
-    try:
-        await app.bot.delete_webhook(drop_pending_updates=True)
-        logger.info("🧹 Webhook supprimé, conflits résolus")
-    except Exception as e:
-        logger.warning("delete_webhook: %s", e)
+    max_retries = 10
+    retry_delay = 20  # seconds between retries
 
-    # Wait for Telegram to release any prior polling session (previous process)
-    await asyncio.sleep(12)
+    for attempt in range(1, max_retries + 1):
+        if stop_event and stop_event.is_set():
+            logger.info("🛑 Bot polling stopped before start (stop_event set)")
+            return
 
-    await app.start()
-    await app.updater.start_polling(
-        drop_pending_updates=True,
-        allowed_updates=["message", "callback_query"],
-        timeout=30,
-        connect_timeout=15,
-        read_timeout=35,
-    )
-    logger.info("🤖 Bot de commandes actif en mode polling")
+        app = None
+        try:
+            app = await build_app()
+            await app.initialize()
 
-    if stop_event:
-        await stop_event.wait()
-        await app.updater.stop()
-        await app.stop()
-        await app.shutdown()
+            # Force-delete any existing webhook and clear conflict state
+            try:
+                await app.bot.delete_webhook(drop_pending_updates=True)
+                logger.info("🧹 Webhook supprimé, conflits résolus")
+            except Exception as e:
+                logger.warning("delete_webhook: %s", e)
+
+            # Wait for Telegram to release any prior polling session
+            wait = retry_delay if attempt > 1 else 15
+            logger.info("⏳ Attente %ds avant démarrage du polling (tentative %d/%d)...", wait, attempt, max_retries)
+            await asyncio.sleep(wait)
+
+            if stop_event and stop_event.is_set():
+                logger.info("🛑 Bot polling stopped after sleep (stop_event set)")
+                return
+
+            await app.start()
+            await app.updater.start_polling(
+                drop_pending_updates=True,
+                allowed_updates=["message", "callback_query"],
+                timeout=30,
+            )
+            logger.info("✅ 🤖 Bot de commandes ACTIF en mode polling (tentative %d)", attempt)
+
+            # Keep alive until shutdown
+            if stop_event:
+                await stop_event.wait()
+            else:
+                # Fallback: keep alive indefinitely
+                while True:
+                    await asyncio.sleep(60)
+
+            # Graceful shutdown
+            try:
+                await app.updater.stop()
+                await app.stop()
+                await app.shutdown()
+            except Exception as e:
+                logger.warning("Erreur lors de l'arrêt du bot: %s", e)
+            logger.info("🛑 Bot polling arrêté proprement")
+            return
+
+        except Exception as e:
+            logger.error("❌ Bot polling erreur (tentative %d/%d): %s: %s",
+                         attempt, max_retries, type(e).__name__, e)
+            if app:
+                try:
+                    await app.shutdown()
+                except Exception:
+                    pass
+            if attempt < max_retries:
+                logger.info("🔄 Nouvelle tentative dans %ds...", retry_delay)
+                await asyncio.sleep(retry_delay)
+            else:
+                logger.error("❌ Bot polling abandonné après %d tentatives", max_retries)
+                return

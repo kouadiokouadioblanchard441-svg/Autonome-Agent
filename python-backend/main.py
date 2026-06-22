@@ -78,6 +78,16 @@ async def lifespan(app: FastAPI):
             from bot.notifications import notification_loop
             # Only ONE Application does polling — avoids 409 Conflict
             _bot_task = asyncio.create_task(run_bot_polling(_bot_stop_event))
+
+            def _bot_task_done(task: asyncio.Task):
+                if task.cancelled():
+                    logger.warning("⚠️ Bot task annulée")
+                elif task.exception():
+                    logger.error("❌ Bot task exception: %s", task.exception())
+                else:
+                    logger.info("ℹ️ Bot task terminée normalement")
+
+            _bot_task.add_done_callback(_bot_task_done)
             logger.info("🤖 Telegram command bot started")
 
             if db_pool:
