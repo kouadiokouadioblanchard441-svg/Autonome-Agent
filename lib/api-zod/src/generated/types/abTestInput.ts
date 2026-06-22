@@ -14,4 +14,7 @@ export interface AbTestInput {
   targetCount?: number;
   confidenceThreshold?: number;
   autoSelectWinner?: number;
+  communityType?: string;
+  communityId?: string;
+  promptMode?: number;
 }

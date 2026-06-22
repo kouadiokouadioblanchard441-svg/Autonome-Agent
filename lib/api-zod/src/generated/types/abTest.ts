@@ -21,11 +21,20 @@ export interface AbTest {
   sentB: number;
   repliesA: number;
   repliesB: number;
+  reactionsA?: number;
+  reactionsB?: number;
   replyRateA: number;
   replyRateB: number;
   targetCount: number;
   confidenceThreshold: number;
   autoSelectWinner: number;
+  /** @nullable */
+  communityType?: string | null;
+  /** @nullable */
+  communityId?: string | null;
+  promptMode?: number;
+  /** @nullable */
+  lastVariantSent?: string | null;
   /** @nullable */
   startedAt?: string | null;
   /** @nullable */

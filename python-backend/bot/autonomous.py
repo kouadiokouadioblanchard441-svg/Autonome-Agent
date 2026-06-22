@@ -247,6 +247,11 @@ async def _post_content(
         idea   = random.choice(ideas) if ideas else ""
         system_prompt = persona.get("system_prompt", "")
 
+    # A/B test prompt override — inject variant prompt as the system instruction
+    if topic_info.get("ab_prompt_override"):
+        ab_override = topic_info["ab_prompt_override"]
+        system_prompt = (system_prompt + "\n\n" + ab_override).strip() if system_prompt else ab_override
+
     # Enrich with real-time data (market prices, news headlines)
     try:
         from .realtime_intel import enrich_post_with_realtime
@@ -313,14 +318,17 @@ async def _post_content(
             except Exception as e:
                 logger.warning("send_file failed: %s — falling back to text only", e)
 
+    sent_message = None
     if not image_sent:
         try:
-            await client.send_message(entity, text)
+            sent_message = await client.send_message(entity, text)
             logger.info("[Account %d] Posted text to %s", account_id, title)
         except Exception as e:
             logger.error("send_message failed: %s", e)
             return
 
+    # Return message ID for A/B test reaction tracking
+    msg_id = getattr(sent_message, "id", None) if sent_message else None
     if pool:
         await _log_message(pool, account_id, text, is_ai=True)
         # Update engagement score
@@ -344,6 +352,7 @@ async def _post_content(
                 logger.warning("Video send failed: %s", e)
 
     _last_post[(account_id, str(getattr(entity, "id", 0)))] = asyncio.get_event_loop().time()
+    return msg_id  # Return for A/B test tracking
 
 
 # ── Event Handlers ────────────────────────────────────────────────────────────
@@ -544,13 +553,48 @@ async def _autopost_loop(client, pool, account_id: int, stop_event: asyncio.Even
                         # Build topic_info with content type override
                         topic_info = {"forced_content_type": content_type}
 
-                        await _post_content(
+                        # ── A/B test: inject variant prompt if active ──────────
+                        ab_test     = None
+                        ab_variant  = None
+                        try:
+                            from .ab_content import (
+                                get_active_community_test,
+                                get_next_variant,
+                                record_ab_sent,
+                            )
+                            ab_test = await get_active_community_test(pool, "channel", tg_id)
+                            if ab_test and ab_test.get("prompt_mode") == 1:
+                                ab_variant = await get_next_variant(pool, ab_test["id"])
+                                prompt_key = f"variant_{ab_variant}"
+                                topic_info["ab_prompt_override"] = ab_test.get(prompt_key, "")
+                                topic_info["ab_test_id"]  = ab_test["id"]
+                                topic_info["ab_variant"]  = ab_variant
+                                logger.info(
+                                    "[Account %d] A/B test %d — using variant %s for channel %s",
+                                    account_id, ab_test["id"], ab_variant.upper(), tg_id,
+                                )
+                        except Exception as ab_err:
+                            logger.debug("[AB] pre-post check error: %s", ab_err)
+
+                        sent_msg_id = await _post_content(
                             client, pool, account_id, entity, topic_info,
                             with_image=cfg.get("post_with_image", True),
                             with_video=with_video,
                             chat_type="channel",
                             profile=profile,
                         )
+
+                        # Record A/B sent after successful post
+                        if ab_test and ab_variant:
+                            try:
+                                await record_ab_sent(
+                                    pool, ab_test["id"], ab_variant,
+                                    message_id=sent_msg_id,
+                                    chat_type="channel", tg_id=tg_id,
+                                )
+                            except Exception as ab_err:
+                                logger.debug("[AB] record_ab_sent error: %s", ab_err)
+
                         _last_post[key] = now
                         logger.info(
                             "[Account %d] Auto-posted '%s' to channel '%s'. Next in %.0f min",

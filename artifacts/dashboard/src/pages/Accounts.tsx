@@ -56,7 +56,7 @@ export default function Accounts() {
   async function handleCreateAccount() {
     if (!newPhone.trim()) { toast.error("Numéro de téléphone requis"); return; }
     try {
-      await createMutation.mutateAsync({ phoneNumber: newPhone.trim(), label: newLabel.trim() || undefined });
+      await createMutation.mutateAsync({ data: { phoneNumber: newPhone.trim(), displayName: newLabel.trim() || undefined } });
       toast.success("Compte créé");
       setShowNew(false);
       setNewPhone("");
@@ -74,8 +74,8 @@ export default function Accounts() {
     setTfaPassword("");
     try {
       const res = await connectMutation.mutateAsync({
-        id: String(accountId),
-        connectAccountBody: { action: "request_code" } as any,
+        id: accountId,
+        data: { action: "request_code" } as any,
       });
       if ((res as any).needsCode) {
         setCs((s) => ({ ...s, step: "otp", loading: false }));
@@ -101,8 +101,8 @@ export default function Accounts() {
     setCs((s) => ({ ...s, loading: true, error: "" }));
     try {
       const res = await connectMutation.mutateAsync({
-        id: String(cs.accountId),
-        connectAccountBody: { action: "verify_code", code: otpCode.trim() } as any,
+        id: cs.accountId as number,
+        data: { action: "verify_code", code: otpCode.trim() } as any,
       });
       if ((res as any).needs2FA) {
         setCs((s) => ({ ...s, step: "twofa", loading: false }));
@@ -128,8 +128,8 @@ export default function Accounts() {
     setCs((s) => ({ ...s, loading: true, error: "" }));
     try {
       const res = await connectMutation.mutateAsync({
-        id: String(cs.accountId),
-        connectAccountBody: { action: "verify_2fa", password: tfaPassword } as any,
+        id: cs.accountId as number,
+        data: { action: "verify_2fa", password: tfaPassword } as any,
       });
       if ((res as any).success) {
         setCs((s) => ({ ...s, step: "done", loading: false }));
@@ -148,7 +148,7 @@ export default function Accounts() {
 
   async function handleDisconnect(accountId: number) {
     try {
-      await disconnectMutation.mutateAsync({ id: String(accountId) });
+      await disconnectMutation.mutateAsync({ id: accountId });
       toast.success("Compte déconnecté");
       refreshAccounts();
     } catch {
@@ -236,8 +236,8 @@ export default function Accounts() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Activity className={`w-4 h-4 ${account.healthScore > 80 ? "text-primary" : account.healthScore > 50 ? "text-accent" : "text-destructive"}`} />
-                        <span className="font-mono text-sm">{account.healthScore}/100</span>
+                        <Activity className={`w-4 h-4 ${(account.healthScore ?? 0) > 80 ? "text-primary" : (account.healthScore ?? 0) > 50 ? "text-accent" : "text-destructive"}`} />
+                        <span className="font-mono text-sm">{account.healthScore ?? 0}/100</span>
                       </div>
                     </TableCell>
                     <TableCell>

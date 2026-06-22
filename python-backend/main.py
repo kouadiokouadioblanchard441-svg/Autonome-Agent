@@ -763,6 +763,42 @@ async def trigger_report(request: Request):
         return {"ok": False, "message": str(e)}
 
 
+@app.get("/ab-tests/community")
+async def get_community_ab_tests():
+    """Return all A/B tests linked to a community (for dashboard)."""
+    if not db_pool:
+        return {"ok": False, "tests": [], "error": "DB not connected"}
+    try:
+        from bot.ab_content import get_all_community_tests
+        tests = await get_all_community_tests(db_pool)
+        return {"ok": True, "tests": tests}
+    except Exception as e:
+        logger.error("get_community_ab_tests: %s", e)
+        return {"ok": False, "tests": [], "error": str(e)}
+
+
+@app.post("/ab-tests/{test_id}/engage")
+async def record_ab_engage(test_id: int, request: Request):
+    """Record an engagement event (reply/reaction) for a specific variant."""
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        pass
+    variant = body.get("variant", "a")
+    kind    = body.get("kind", "reply")
+    if variant not in ("a", "b"):
+        return {"ok": False, "error": "variant must be 'a' or 'b'"}
+    if not db_pool:
+        return {"ok": False, "error": "DB not connected"}
+    try:
+        from bot.ab_content import record_ab_engagement
+        await record_ab_engagement(db_pool, test_id, variant, kind=kind)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 @app.put("/monitoring/communities/{chat_type}/{tg_id}/schedule")
 async def update_community_schedule(chat_type: str, tg_id: str, config: dict):
     """Update the schedule config for a community."""

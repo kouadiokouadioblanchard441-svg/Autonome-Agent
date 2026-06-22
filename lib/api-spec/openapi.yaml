@@ -2782,6 +2782,10 @@ components:
           type: integer
         repliesB:
           type: integer
+        reactionsA:
+          type: integer
+        reactionsB:
+          type: integer
         replyRateA:
           type: number
         replyRateB:
@@ -2792,6 +2796,14 @@ components:
           type: number
         autoSelectWinner:
           type: integer
+        communityType:
+          type: ["string", "null"]
+        communityId:
+          type: ["string", "null"]
+        promptMode:
+          type: integer
+        lastVariantSent:
+          type: ["string", "null"]
         startedAt:
           type: ["string", "null"]
         completedAt:
@@ -2815,6 +2827,12 @@ components:
         confidenceThreshold:
           type: number
         autoSelectWinner:
+          type: integer
+        communityType:
+          type: string
+        communityId:
+          type: string
+        promptMode:
           type: integer
 
     AbTestReplyInput:

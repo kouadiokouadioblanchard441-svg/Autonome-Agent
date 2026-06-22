@@ -11,6 +11,12 @@ type AbTestInsert = typeof abTestsTable.$inferInsert;
 function serialize(t: typeof abTestsTable.$inferSelect) {
   return {
     ...t,
+    reactionsA: t.reactionsA ?? 0,
+    reactionsB: t.reactionsB ?? 0,
+    promptMode: t.promptMode ?? 0,
+    communityType: t.communityType ?? null,
+    communityId: t.communityId ?? null,
+    lastVariantSent: t.lastVariantSent ?? null,
     startedAt: t.startedAt?.toISOString() ?? null,
     completedAt: t.completedAt?.toISOString() ?? null,
     createdAt: t.createdAt.toISOString(),

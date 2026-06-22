@@ -1431,11 +1431,17 @@ export const ListAbTestsResponseItem = zod.object({
   "sentB": zod.number(),
   "repliesA": zod.number(),
   "repliesB": zod.number(),
+  "reactionsA": zod.number().optional(),
+  "reactionsB": zod.number().optional(),
   "replyRateA": zod.number(),
   "replyRateB": zod.number(),
   "targetCount": zod.number(),
   "confidenceThreshold": zod.number(),
   "autoSelectWinner": zod.number(),
+  "communityType": zod.string().nullish(),
+  "communityId": zod.string().nullish(),
+  "promptMode": zod.number().optional(),
+  "lastVariantSent": zod.string().nullish(),
   "startedAt": zod.string().nullish(),
   "completedAt": zod.string().nullish(),
   "createdAt": zod.string()
@@ -1450,7 +1456,10 @@ export const CreateAbTestBody = zod.object({
   "variantB": zod.string().optional(),
   "targetCount": zod.number().optional(),
   "confidenceThreshold": zod.number().optional(),
-  "autoSelectWinner": zod.number().optional()
+  "autoSelectWinner": zod.number().optional(),
+  "communityType": zod.string().optional(),
+  "communityId": zod.string().optional(),
+  "promptMode": zod.number().optional()
 })
 
 
@@ -1465,7 +1474,10 @@ export const UpdateAbTestBody = zod.object({
   "variantB": zod.string().optional(),
   "targetCount": zod.number().optional(),
   "confidenceThreshold": zod.number().optional(),
-  "autoSelectWinner": zod.number().optional()
+  "autoSelectWinner": zod.number().optional(),
+  "communityType": zod.string().optional(),
+  "communityId": zod.string().optional(),
+  "promptMode": zod.number().optional()
 })
 
 export const UpdateAbTestResponse = zod.object({
@@ -1480,11 +1492,17 @@ export const UpdateAbTestResponse = zod.object({
   "sentB": zod.number(),
   "repliesA": zod.number(),
   "repliesB": zod.number(),
+  "reactionsA": zod.number().optional(),
+  "reactionsB": zod.number().optional(),
   "replyRateA": zod.number(),
   "replyRateB": zod.number(),
   "targetCount": zod.number(),
   "confidenceThreshold": zod.number(),
   "autoSelectWinner": zod.number(),
+  "communityType": zod.string().nullish(),
+  "communityId": zod.string().nullish(),
+  "promptMode": zod.number().optional(),
+  "lastVariantSent": zod.string().nullish(),
   "startedAt": zod.string().nullish(),
   "completedAt": zod.string().nullish(),
   "createdAt": zod.string()
@@ -1512,11 +1530,17 @@ export const StartAbTestResponse = zod.object({
   "sentB": zod.number(),
   "repliesA": zod.number(),
   "repliesB": zod.number(),
+  "reactionsA": zod.number().optional(),
+  "reactionsB": zod.number().optional(),
   "replyRateA": zod.number(),
   "replyRateB": zod.number(),
   "targetCount": zod.number(),
   "confidenceThreshold": zod.number(),
   "autoSelectWinner": zod.number(),
+  "communityType": zod.string().nullish(),
+  "communityId": zod.string().nullish(),
+  "promptMode": zod.number().optional(),
+  "lastVariantSent": zod.string().nullish(),
   "startedAt": zod.string().nullish(),
   "completedAt": zod.string().nullish(),
   "createdAt": zod.string()
@@ -1543,11 +1567,17 @@ export const RecordAbTestReplyResponse = zod.object({
   "sentB": zod.number(),
   "repliesA": zod.number(),
   "repliesB": zod.number(),
+  "reactionsA": zod.number().optional(),
+  "reactionsB": zod.number().optional(),
   "replyRateA": zod.number(),
   "replyRateB": zod.number(),
   "targetCount": zod.number(),
   "confidenceThreshold": zod.number(),
   "autoSelectWinner": zod.number(),
+  "communityType": zod.string().nullish(),
+  "communityId": zod.string().nullish(),
+  "promptMode": zod.number().optional(),
+  "lastVariantSent": zod.string().nullish(),
   "startedAt": zod.string().nullish(),
   "completedAt": zod.string().nullish(),
   "createdAt": zod.string()
