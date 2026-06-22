@@ -57,7 +57,10 @@ async def lifespan(app: FastAPI):
     global db_pool, _bot_stop_event, _bot_task, _notif_task, _auto_task
     if DATABASE_URL:
         try:
-            db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10, ssl="require", statement_cache_size=0)
+            try:
+                db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10, ssl="require", statement_cache_size=0)
+            except Exception:
+                db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10, ssl=False, statement_cache_size=0)
             logger.info("Database pool created")
         except Exception as e:
             logger.error(f"Failed to create DB pool: {e}")
