@@ -74,16 +74,18 @@ async def lifespan(app: FastAPI):
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     if bot_token:
         try:
-            from bot.runner import run_bot_polling, build_app
+            from bot.runner import run_bot_polling
             from bot.notifications import notification_loop
+            # Only ONE Application does polling — avoids 409 Conflict
             _bot_task = asyncio.create_task(run_bot_polling(_bot_stop_event))
             logger.info("🤖 Telegram command bot started")
 
             if db_pool:
-                _notif_app = await build_app()
-                await _notif_app.initialize()
+                # Use a lightweight Bot (no polling) just for sending notifications
+                from telegram import Bot as TGBot
+                _notif_bot = TGBot(token=bot_token)
                 _notif_task = asyncio.create_task(
-                    notification_loop(_notif_app.bot, db_pool, _bot_stop_event)
+                    notification_loop(_notif_bot, db_pool, _bot_stop_event)
                 )
                 logger.info("🔔 Notification loop started")
         except Exception as e:

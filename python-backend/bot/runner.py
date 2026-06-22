@@ -180,8 +180,8 @@ async def run_bot_polling(stop_event=None):
     except Exception as e:
         logger.warning("delete_webhook: %s", e)
 
-    # Brief pause to let Telegram release prior polling session
-    await asyncio.sleep(3)
+    # Wait for Telegram to release any prior polling session (previous process)
+    await asyncio.sleep(12)
 
     await app.start()
     await app.updater.start_polling(
