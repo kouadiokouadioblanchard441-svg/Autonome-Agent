@@ -493,12 +493,16 @@ def _make_message_handler(client, pool, account_id: int):
     return on_new_message
 
 
+# ── Post index tracker (per channel) ─────────────────────────────────────────
+_post_index: dict[tuple, int] = {}
+
+
 # ── Auto-post loop for channels ───────────────────────────────────────────────
 
 async def _autopost_loop(client, pool, account_id: int, stop_event: asyncio.Event):
     """
-    Periodically post content to all channels where is_auto_post=True
-    and this account is responsible.
+    Periodically post content to all channels where is_auto_post=True.
+    Interval and content rotation are read from per-channel schedule config.
     """
     while not stop_event.is_set():
         try:
@@ -513,39 +517,88 @@ async def _autopost_loop(client, pool, account_id: int, stop_event: asyncio.Even
                     title = row["title"]
                     key   = (account_id, tg_id)
                     now   = asyncio.get_event_loop().time()
-                    # Skip if posted recently
-                    if now - _last_post.get(key, 0) < AUTOPOST_INTERVAL_MIN:
+
+                    # Load configurable interval for this channel
+                    from .scheduler_config import get_interval_seconds, get_content_type_for_post, get_schedule_config
+                    cfg      = await get_schedule_config(pool, "channel", tg_id)
+                    interval_secs = int(cfg.get("interval_seconds", AUTOPOST_INTERVAL_MIN))
+                    enabled  = cfg.get("enabled", True)
+
+                    if not enabled:
+                        continue
+                    if now - _last_post.get(key, 0) < interval_secs:
                         continue
 
                     try:
-                        entity = await client.get_entity(int(tg_id))
-                        # Load or build community profile (new intel system)
+                        entity  = await client.get_entity(int(tg_id))
                         profile = await _get_community_profile(client, pool, entity, "channel", account_id)
-                        # Alternate: every 3rd post adds a video
-                        post_count = int((_last_post.get(key, 0) // AUTOPOST_INTERVAL_MIN)) % 3
-                        with_video = (post_count == 2)
+
+                        # Determine content type from rotation
+                        post_idx     = _post_index.get(key, 0)
+                        content_type = await get_content_type_for_post(pool, "channel", tg_id, post_idx)
+                        _post_index[key] = post_idx + 1
+
+                        # Every 4th post can include video
+                        with_video = (post_idx % 4 == 3) and cfg.get("post_with_video", False)
+
+                        # Build topic_info with content type override
+                        topic_info = {"forced_content_type": content_type}
+
                         await _post_content(
-                            client, pool, account_id, entity, {},
-                            with_image=True, with_video=with_video,
-                            chat_type="channel", profile=profile,
+                            client, pool, account_id, entity, topic_info,
+                            with_image=cfg.get("post_with_image", True),
+                            with_video=with_video,
+                            chat_type="channel",
+                            profile=profile,
                         )
-                        interval = random.uniform(AUTOPOST_INTERVAL_MIN, AUTOPOST_INTERVAL_MAX)
+                        _last_post[key] = now
                         logger.info(
-                            "[Account %d] Auto-posted to channel '%s'. Next in %.0f min",
-                            account_id, title, interval / 60,
+                            "[Account %d] Auto-posted '%s' to channel '%s'. Next in %.0f min",
+                            account_id, content_type, title, interval_secs / 60,
                         )
-                        await asyncio.sleep(interval)
                     except Exception as e:
                         logger.warning("[Account %d] autopost to %s failed: %s", account_id, tg_id, e)
 
         except Exception as e:
             logger.error("[Account %d] autopost_loop error: %s", account_id, e)
 
-        # Check every 5 minutes
+        # Check every 2 minutes
         try:
-            await asyncio.wait_for(stop_event.wait(), timeout=300)
+            await asyncio.wait_for(stop_event.wait(), timeout=120)
         except asyncio.TimeoutError:
             pass
+
+
+# ── Engine status (for monitoring endpoint) ───────────────────────────────────
+
+def get_engine_status() -> dict:
+    """Return real-time autonomous engine state for the monitoring dashboard."""
+    import time
+    now = time.time()
+    accounts_info = []
+    for acc_id, client in _clients.items():
+        tasks     = _tasks.get(acc_id, [])
+        channels  = [k[1] for k in _last_post if k[0] == acc_id]
+        last_posts = {k[1]: _last_post[k] for k in _last_post if k[0] == acc_id}
+        next_posts = {}
+        for ch_id, last in last_posts.items():
+            elapsed = now - last
+            # Default 4h interval — real interval fetched live per call
+            next_in = max(0, 14400 - elapsed)
+            next_posts[ch_id] = int(next_in)
+        accounts_info.append({
+            "account_id": acc_id,
+            "active":     True,
+            "tasks":      len([t for t in tasks if not t.done()]),
+            "channels_managed": len(channels),
+            "last_post_times":  {k: int(v) for k, v in last_posts.items()},
+            "next_post_in_sec": next_posts,
+        })
+    return {
+        "active_clients":  len(_clients),
+        "accounts":        accounts_info,
+        "total_tasks":     sum(len(t) for t in _tasks.values()),
+    }
 
 
 # ── Public API ────────────────────────────────────────────────────────────────

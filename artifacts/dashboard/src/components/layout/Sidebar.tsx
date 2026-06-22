@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, MessageSquare, Megaphone, CalendarClock,
   BrainCircuit, ShieldAlert, BarChart3, Bell, MessageCircle, Hash,
   Timer, KeyRound, Flame, Shield, Zap, Brain, Target, FlaskConical,
-  Search, AlertTriangle, LogOut, UserCog, X,
+  Search, AlertTriangle, LogOut, UserCog, X, Globe2, Activity,
 } from "lucide-react";
 import nexusLogo from "@/assets/nexus-logo.svg";
 
@@ -45,6 +45,13 @@ const NAV_GROUPS = [
       { href: "/lead-funnel", label: "Lead Funnel", icon: Target },
       { href: "/ab-testing", label: "A/B Testing", icon: FlaskConical },
       { href: "/escalations", label: "Escalations", icon: AlertTriangle },
+    ],
+  },
+  {
+    label: "Communautés",
+    items: [
+      { href: "/community-manager", label: "Gestionnaire", icon: Globe2 },
+      { href: "/monitoring", label: "Monitoring Temps Réel", icon: Activity },
     ],
   },
   {

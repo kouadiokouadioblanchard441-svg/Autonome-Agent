@@ -187,6 +187,9 @@ async def run_bot_polling(stop_event=None):
     await app.updater.start_polling(
         drop_pending_updates=True,
         allowed_updates=["message", "callback_query"],
+        timeout=30,
+        connect_timeout=15,
+        read_timeout=35,
     )
     logger.info("🤖 Bot de commandes actif en mode polling")
 

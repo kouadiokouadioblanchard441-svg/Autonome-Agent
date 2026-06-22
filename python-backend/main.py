@@ -70,7 +70,7 @@ async def lifespan(app: FastAPI):
     # Shared stop event for all background services
     _bot_stop_event = asyncio.Event()
 
-    # Start Telegram command bot + notification loop
+    # Start Telegram command bot + notification loop + report scheduler
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     if bot_token:
         try:
@@ -81,13 +81,18 @@ async def lifespan(app: FastAPI):
             logger.info("🤖 Telegram command bot started")
 
             if db_pool:
-                # Use a lightweight Bot (no polling) just for sending notifications
+                # Use a lightweight Bot (no polling) just for sending notifications + reports
                 from telegram import Bot as TGBot
                 _notif_bot = TGBot(token=bot_token)
                 _notif_task = asyncio.create_task(
                     notification_loop(_notif_bot, db_pool, _bot_stop_event)
                 )
                 logger.info("🔔 Notification loop started")
+
+                # Automated daily/weekly reports
+                from bot.reports import report_scheduler
+                asyncio.create_task(report_scheduler(db_pool, _notif_bot, _bot_stop_event))
+                logger.info("📅 Report scheduler started")
         except Exception as e:
             logger.error(f"Failed to start command bot: {e}")
 
@@ -632,6 +637,114 @@ async def get_bot_status():
         "bot_running": _bot_task is not None and not _bot_task.done(),
         "commands_count": 30,
     }
+
+
+@app.get("/monitoring/status")
+async def get_monitoring_status():
+    """Real-time engine status for the dashboard monitoring page."""
+    from datetime import datetime
+    engine_info = {"active_clients": 0, "accounts": [], "total_tasks": 0}
+    report_data = {}
+    try:
+        from bot.autonomous import get_engine_status
+        engine_info = get_engine_status()
+    except Exception as e:
+        logger.warning("get_engine_status: %s", e)
+    if db_pool:
+        try:
+            from bot.reports import get_report_data
+            report_data = await get_report_data(db_pool)
+        except Exception as e:
+            logger.warning("get_report_data: %s", e)
+    return {
+        "engine":       engine_info,
+        "reports":      report_data,
+        "bot_running":  _bot_task is not None and not _bot_task.done(),
+        "db_connected": db_pool is not None,
+        "timestamp":    datetime.utcnow().isoformat(),
+    }
+
+
+@app.get("/monitoring/communities")
+async def get_communities_status():
+    """List all groups and channels with their schedule configs."""
+    if not db_pool:
+        return {"groups": [], "channels": []}
+    try:
+        from bot.scheduler_config import get_schedule_config
+        from bot.community_intel import load_profile
+
+        groups = await db_pool.fetch(
+            "SELECT id, telegram_id, title, username, members_count, is_monitored, is_auto_reply, account_id FROM telegram_groups ORDER BY title"
+        )
+        channels = await db_pool.fetch(
+            "SELECT id, telegram_id, title, username, subscribers_count, is_auto_post, account_id FROM telegram_channels ORDER BY title"
+        )
+
+        groups_out = []
+        for g in groups:
+            cfg     = await get_schedule_config(db_pool, "group", g["telegram_id"])
+            profile = await load_profile(db_pool, "group", g["telegram_id"])
+            groups_out.append({
+                "id":           g["id"],
+                "telegram_id":  g["telegram_id"],
+                "title":        g["title"],
+                "username":     g["username"],
+                "members":      g["members_count"],
+                "is_monitored": g["is_monitored"],
+                "is_auto_reply":g["is_auto_reply"],
+                "account_id":   g["account_id"],
+                "schedule":     cfg,
+                "community_type": profile.community_type if profile else "community",
+                "community_type_label": profile.community_type_label if profile else "Community",
+                "tone":         profile.tone if profile else "casual",
+                "language":     profile.language if profile else "fr",
+                "mission":      profile.mission if profile else "",
+                "engagement_score": profile.engagement_score if profile else 0,
+                "total_posts":  profile.total_posts if profile else 0,
+            })
+
+        channels_out = []
+        for c in channels:
+            cfg     = await get_schedule_config(db_pool, "channel", c["telegram_id"])
+            profile = await load_profile(db_pool, "channel", c["telegram_id"])
+            channels_out.append({
+                "id":           c["id"],
+                "telegram_id":  c["telegram_id"],
+                "title":        c["title"],
+                "username":     c["username"],
+                "subscribers":  c["subscribers_count"],
+                "is_auto_post": c["is_auto_post"],
+                "account_id":   c["account_id"],
+                "schedule":     cfg,
+                "community_type": profile.community_type if profile else "community",
+                "community_type_label": profile.community_type_label if profile else "Community",
+                "tone":         profile.tone if profile else "casual",
+                "language":     profile.language if profile else "fr",
+                "mission":      profile.mission if profile else "",
+                "engagement_score": profile.engagement_score if profile else 0,
+                "total_posts":  profile.total_posts if profile else 0,
+            })
+
+        return {"groups": groups_out, "channels": channels_out}
+    except Exception as e:
+        logger.error("get_communities_status: %s", e)
+        return {"groups": [], "channels": [], "error": str(e)}
+
+
+@app.put("/monitoring/communities/{chat_type}/{tg_id}/schedule")
+async def update_community_schedule(chat_type: str, tg_id: str, config: dict):
+    """Update the schedule config for a community."""
+    if not db_pool:
+        return {"ok": False, "error": "DB not connected"}
+    if chat_type not in ("group", "channel"):
+        return {"ok": False, "error": "Invalid chat_type"}
+    try:
+        from bot.scheduler_config import save_schedule_config
+        await save_schedule_config(db_pool, chat_type, tg_id, config)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 
 if __name__ == "__main__":

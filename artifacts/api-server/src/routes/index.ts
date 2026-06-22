@@ -22,6 +22,8 @@ import autoJoinRouter from "./auto-join";
 import escalationsRouter from "./escalations";
 import authRouter from "./auth";
 import clientPortalsRouter from "./client-portals";
+import communitiesRouter from "./communities";
+import monitoringRouter from "./monitoring";
 
 const router: IRouter = Router();
 
@@ -65,5 +67,7 @@ router.use(abTestsRouter);
 router.use(autoJoinRouter);
 router.use(escalationsRouter);
 router.use(clientPortalsRouter);
+router.use(communitiesRouter);
+router.use(monitoringRouter);
 
 export default router;

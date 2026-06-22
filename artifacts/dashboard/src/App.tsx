@@ -30,6 +30,8 @@ import ABTesting from "@/pages/ABTesting";
 import AutoJoin from "@/pages/AutoJoin";
 import Escalations from "@/pages/Escalations";
 import ClientsManager from "@/pages/ClientsManager";
+import CommunityManager from "@/pages/CommunityManager";
+import Monitoring from "@/pages/Monitoring";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -63,6 +65,8 @@ function AdminPanel() {
         <Route path="/auto-join" component={AutoJoin} />
         <Route path="/escalations" component={Escalations} />
         <Route path="/clients" component={ClientsManager} />
+        <Route path="/community-manager" component={CommunityManager} />
+        <Route path="/monitoring" component={Monitoring} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
