@@ -4,6 +4,20 @@ import { db, appSettingsTable } from "@workspace/db";
 import { UpsertSettingsBody, GetSettingParams, DeleteSettingParams } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 
+// Known env vars and what they do
+const ENV_VAR_CATALOG: Record<string, { label: string; description: string; isSecret: boolean; howTo?: string }> = {
+  TELEGRAM_API_ID:         { label: "Telegram API ID",        isSecret: false, description: "Identifiant numérique de ton application Telegram (my.telegram.org)" },
+  TELEGRAM_API_HASH:       { label: "Telegram API Hash",      isSecret: true,  description: "Clé secrète de ton application Telegram (my.telegram.org)" },
+  TELEGRAM_BOT_TOKEN:      { label: "Bot Token",              isSecret: true,  description: "Token du bot Telegram (obtenu via @BotFather)" },
+  ADMIN_TELEGRAM_ID:       { label: "Admin Telegram ID",      isSecret: false, description: "Ton identifiant Telegram numérique — seul toi peux contrôler le bot" },
+  OPENAI_API_KEY:          { label: "OpenAI API Key",         isSecret: true,  description: "Clé d'accès GPT-4o (platform.openai.com)", howTo: "platform.openai.com → API Keys" },
+  GEMINI_API_KEY:          { label: "Gemini API Key",         isSecret: true,  description: "Clé Google AI Studio — fallback si OpenAI échoue (aistudio.google.com)", howTo: "aistudio.google.com → Get API key" },
+  SUPABASE_URL:            { label: "Supabase URL",           isSecret: false, description: "URL de ton projet Supabase" },
+  SUPABASE_ANON_KEY:       { label: "Supabase Anon Key",      isSecret: true,  description: "Clé publique Supabase (côté client)" },
+  SUPABASE_SERVICE_ROLE_KEY: { label: "Supabase Service Key", isSecret: true,  description: "Clé admin Supabase — accès complet à la base" },
+  SUPABASE_DATABASE_URL:   { label: "Database URL (Supabase)", isSecret: true, description: "URL de connexion directe PostgreSQL via pgBouncer" },
+};
+
 const router = Router();
 
 function mask(s: typeof appSettingsTable.$inferSelect) {
@@ -12,6 +26,23 @@ function mask(s: typeof appSettingsTable.$inferSelect) {
   const masked = v.length <= 8 ? "••••••••" : v.slice(0, 4) + "••••••••" + v.slice(-4);
   return { ...s, value: masked, updatedAt: s.updatedAt.toISOString() };
 }
+
+// ── Env-var status check (no values exposed, just boolean configured/missing) ─
+router.get("/settings/env-status", (_req, res): void => {
+  const status = Object.entries(ENV_VAR_CATALOG).map(([key, meta]) => {
+    const val = process.env[key];
+    return {
+      key,
+      label: meta.label,
+      description: meta.description,
+      isSecret: meta.isSecret,
+      howTo: meta.howTo ?? null,
+      configured: !!(val && val.trim().length > 0),
+      source: "env" as const,
+    };
+  });
+  res.json(status);
+});
 
 // ── List all (secrets masked) ────────────────────────────────────────────────
 router.get("/settings", async (_req, res): Promise<void> => {
