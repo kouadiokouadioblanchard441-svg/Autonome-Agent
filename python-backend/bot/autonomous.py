@@ -133,11 +133,9 @@ async def _get_chat_persona(pool, chat_type: str, tg_id: str,
     persona = await load_persona(pool, chat_type, tg_id)
     if persona:
         return persona
-    # Auto-detect from topic analysis
     info = topic_info or {}
     persona = await detect_and_build_persona(
-        title=title,
-        about=about,
+        title=title, about=about,
         detected_topic=info.get("topic", "community"),
         detected_tone=info.get("tone", "casual"),
         detected_language=info.get("language", "fr"),
@@ -145,6 +143,19 @@ async def _get_chat_persona(pool, chat_type: str, tg_id: str,
     )
     await save_persona(pool, chat_type, tg_id, persona)
     return persona
+
+
+async def _get_community_profile(client, pool, entity, chat_type: str, account_id: int):
+    """
+    Load or build a full CommunityProfile for this entity using community_intel.
+    Falls back to legacy persona if community_intel fails.
+    """
+    try:
+        from .community_intel import discover_community
+        return await discover_community(client, entity, pool, chat_type, account_id)
+    except Exception as e:
+        logger.warning("community_intel failed, falling back to persona: %s", e)
+        return None
 
 
 # ── Core: detect chat and register ───────────────────────────────────────────
@@ -194,6 +205,7 @@ async def _post_content(
     with_image: bool = True,
     with_video: bool = False,
     chat_type: str = "group",
+    profile=None,  # CommunityProfile if already loaded
 ):
     """Generate and post text + optional image/video to a group or channel."""
     from .content_gen import (
@@ -205,25 +217,60 @@ async def _post_content(
     tg_id  = str(getattr(entity, "id", "0"))
     about  = getattr(entity, "about", "") or ""
 
-    # Load per-chat persona (auto-creates one if missing)
-    persona = await _get_chat_persona(
-        pool, chat_type, tg_id, title=title, about=about, topic_info=topic_info
-    )
+    # Try to load community profile (new system)
+    if profile is None:
+        profile = await _get_community_profile(client, pool, entity, chat_type, account_id)
 
-    topic = persona.get("topic", topic_info.get("topic", title))
-    tone  = persona.get("tone", "casual")
-    lang  = persona.get("language", "fr")
-    ideas = persona.get("content_ideas", topic_info.get("content_ideas", []))
-    idea  = random.choice(ideas) if ideas else ""
+    if profile:
+        topic = profile.community_type
+        tone  = profile.tone
+        lang  = profile.language
+        ideas = profile.content_strategy
+        idea  = random.choice(ideas) if ideas else ""
+        system_prompt = (
+            f"Tu es un assistant IA expert en {profile.community_type_label}. "
+            f"Mission: {profile.mission} "
+            f"Objectifs: {'; '.join(profile.objectives[:2])}. "
+            f"Ton: {tone}. "
+            + (f"Instructions admin: {profile.admin_instructions}" if profile.admin_instructions else "")
+            + (f" Éviter: {', '.join(profile.forbidden_topics)}." if profile.forbidden_topics else "")
+        )
+    else:
+        # Legacy fallback
+        persona = await _get_chat_persona(
+            pool, chat_type, tg_id, title=title, about=about, topic_info=topic_info
+        )
+        topic  = persona.get("topic", topic_info.get("topic", title))
+        tone   = persona.get("tone", "casual")
+        lang   = persona.get("language", "fr")
+        ideas  = persona.get("content_ideas", topic_info.get("content_ideas", []))
+        idea   = random.choice(ideas) if ideas else ""
+        system_prompt = persona.get("system_prompt", "")
+
+    # Enrich with real-time data (market prices, news headlines)
+    try:
+        from .realtime_intel import enrich_post_with_realtime
+        rt_prefix = ""
+        if profile and profile.community_type in ("crypto", "finance", "investment", "news"):
+            from .realtime_intel import get_latest_news, format_news_bulletin
+            news = await get_latest_news(profile.community_type, lang, max_items=2)
+            if news:
+                rt_prefix = format_news_bulletin(news, profile.community_type, lang) + "\n\n"
+    except Exception:
+        rt_prefix = ""
 
     # 1 — Generate text
+    if not isinstance(idea, str):
+        idea = str(idea)
     text = await generate_text(
         topic=topic, tone=tone, language=lang,
         content_idea=idea,
-        personality_prompt=persona.get("system_prompt", ""),
+        personality_prompt=system_prompt,
     )
+    if rt_prefix:
+        text = rt_prefix + text
     if pool:
-        await _log_ai(pool, account_id, "auto_post", f"topic={topic} idea={idea}", text)
+        await _log_ai(pool, account_id, "auto_post", f"type={topic} idea={idea}", text)
 
     # 2 — Simulate human typing delay
     typing_time = max(2.0, min(12.0, len(text) / 250 * 60))
@@ -257,6 +304,13 @@ async def _post_content(
 
     if pool:
         await _log_message(pool, account_id, text, is_ai=True)
+        # Update engagement score
+        if profile:
+            try:
+                from .community_intel import update_engagement_score
+                await update_engagement_score(pool, chat_type, tg_id)
+            except Exception:
+                pass
 
     # 4 — Optionally search and send a video (Pexels)
     if with_video:
@@ -300,11 +354,7 @@ def _make_join_handler(client, pool, account_id: int):
             if chat_type == "unknown":
                 return
 
-            # Analyze group topic
             title = getattr(entity, "title", "")
-            about = getattr(entity, "about", "") or ""
-            from .content_gen import analyze_group_topic
-            topic_info = await analyze_group_topic(title, about)
 
             # Wait human-like delay before first post
             delay = random.uniform(JOIN_POST_DELAY_MIN, JOIN_POST_DELAY_MAX)
@@ -314,14 +364,14 @@ def _make_join_handler(client, pool, account_id: int):
             )
             await asyncio.sleep(delay)
 
-            # Build & save persona for this chat on first join
-            await _get_chat_persona(pool, chat_type, str(entity.id),
-                                    title=title, about=about, topic_info=topic_info)
+            # Full community discovery (replaces simple topic analysis)
+            profile = await _get_community_profile(client, pool, entity, chat_type, account_id)
 
             # Post intro content (with image for channels, text only for groups)
             with_img = is_channel or random.random() < 0.4
-            await _post_content(client, pool, account_id, entity, topic_info,
-                                 with_image=with_img, chat_type=chat_type)
+            await _post_content(client, pool, account_id, entity, {},
+                                 with_image=with_img, chat_type=chat_type,
+                                 profile=profile)
 
         except Exception as e:
             logger.error("[Account %d] join handler error: %s", account_id, e)
@@ -424,16 +474,15 @@ async def _autopost_loop(client, pool, account_id: int, stop_event: asyncio.Even
 
                     try:
                         entity = await client.get_entity(int(tg_id))
-                        from .content_gen import analyze_group_topic
-                        about = getattr(entity, "about", "") or ""
-                        topic_info = await analyze_group_topic(title, about)
+                        # Load or build community profile (new intel system)
+                        profile = await _get_community_profile(client, pool, entity, "channel", account_id)
                         # Alternate: every 3rd post adds a video
                         post_count = int((_last_post.get(key, 0) // AUTOPOST_INTERVAL_MIN)) % 3
                         with_video = (post_count == 2)
                         await _post_content(
-                            client, pool, account_id, entity, topic_info,
+                            client, pool, account_id, entity, {},
                             with_image=True, with_video=with_video,
-                            chat_type="channel",
+                            chat_type="channel", profile=profile,
                         )
                         interval = random.uniform(AUTOPOST_INTERVAL_MIN, AUTOPOST_INTERVAL_MAX)
                         logger.info(
@@ -584,11 +633,11 @@ async def trigger_post_now(account_id: int, chat_id: str, with_image: bool = Tru
         raise RuntimeError(f"Account {account_id} engine not running")
 
     from .utils import get_pool
-    from .content_gen import analyze_group_topic
     pool = await get_pool()
     entity = await client.get_entity(int(chat_id))
-    title  = getattr(entity, "title", chat_id)
-    about  = getattr(entity, "about", "") or ""
-    topic_info = await analyze_group_topic(title, about)
-    await _post_content(client, pool, account_id, entity, topic_info,
-                        with_image=with_image, with_video=with_video)
+    is_channel = getattr(entity, "broadcast", False) and not getattr(entity, "megagroup", False)
+    chat_type = "channel" if is_channel else "group"
+    profile = await _get_community_profile(client, pool, entity, chat_type, account_id)
+    await _post_content(client, pool, account_id, entity, {},
+                        with_image=with_image, with_video=with_video,
+                        chat_type=chat_type, profile=profile)

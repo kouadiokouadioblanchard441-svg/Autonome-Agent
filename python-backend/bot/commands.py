@@ -1400,3 +1400,278 @@ async def cmd_persona_reset(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "Elle sera auto-détectée lors du prochain post.",
         parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb()
     )
+
+
+# ── Community Intelligence Commands ───────────────────────────────────────────
+
+@admin_only
+async def cmd_mission(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """/mission <group|channel> <telegram_id> — Voir le profil complet d'une communauté."""
+    args = ctx.args or []
+    if len(args) < 2:
+        await update.message.reply_text(
+            "❌ Usage: `/mission <group|channel> <telegram_id>`\n\n"
+            "Exemple: `/mission channel -1001234567890`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    chat_type, tg_id = args[0].lower(), args[1]
+    if chat_type not in ("group", "channel"):
+        await update.message.reply_text("❌ Type doit être `group` ou `channel`.", parse_mode=ParseMode.MARKDOWN)
+        return
+
+    from .community_intel import load_profile, format_profile_card
+    from .utils import get_pool
+    pool = await get_pool()
+    profile = await load_profile(pool, chat_type, tg_id)
+
+    if not profile:
+        await update.message.reply_text(
+            f"❓ Aucun profil communautaire pour ce {chat_type}.\n"
+            "Il sera créé automatiquement lors du prochain post ou join.\n\n"
+            f"Pour le créer maintenant: `/mission_scan {chat_type} {tg_id}`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    card = format_profile_card(profile)
+    for chunk in chunk_text(card, 4000):
+        await update.message.reply_text(chunk, parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+
+@admin_only
+async def cmd_mission_list(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """/mission_list — Voir tous les profils communautaires actifs."""
+    from .community_intel import load_profile, COMMUNITY_TYPES
+    from .utils import get_pool
+    pool = await get_pool()
+
+    groups   = await db_fetch("SELECT telegram_id, title FROM telegram_groups ORDER BY title LIMIT 15")
+    channels = await db_fetch("SELECT telegram_id, title FROM telegram_channels ORDER BY title LIMIT 15")
+
+    if not groups and not channels:
+        await update.message.reply_text(
+            "📭 Aucun groupe/canal enregistré.\nRejoins d'abord des groupes avec un compte.",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    lines = ["🌐 *Profils communautaires actifs*\n"]
+    type_icons = {
+        "crypto": "🪙", "finance": "💰", "business": "💼", "marketing": "📣",
+        "politics": "🏛", "technology": "💻", "ai": "🤖", "education": "📚",
+        "health": "❤️", "sports": "⚽", "entertainment": "🎬", "religion": "🕌",
+        "realestate": "🏠", "ecommerce": "🛒", "investment": "📈",
+        "startups": "🚀", "gaming": "🎮", "science": "🔬", "news": "📰",
+        "lifestyle": "✨", "motivational": "💪", "community": "🤝",
+    }
+
+    if groups:
+        lines.append("👥 *Groupes:*")
+        for g in groups:
+            p = await load_profile(pool, "group", g["telegram_id"])
+            if p:
+                icon = type_icons.get(p.community_type, "🌐")
+                lang_flag = {"fr": "🇫🇷", "en": "🇬🇧", "ar": "🇸🇦", "es": "🇪🇸", "pt": "🇧🇷"}.get(p.language, "🌍")
+                lines.append(f"  {icon} {g['title'][:25]} → `{p.community_type}` {lang_flag} ({p.total_posts} posts)")
+            else:
+                lines.append(f"  ❓ {g['title'][:25]} → non analysé")
+
+    if channels:
+        lines.append("\n📢 *Canaux:*")
+        for c in channels:
+            p = await load_profile(pool, "channel", c["telegram_id"])
+            if p:
+                icon = type_icons.get(p.community_type, "🌐")
+                lang_flag = {"fr": "🇫🇷", "en": "🇬🇧", "ar": "🇸🇦", "es": "🇪🇸", "pt": "🇧🇷"}.get(p.language, "🌍")
+                lines.append(f"  {icon} {c['title'][:25]} → `{p.community_type}` {lang_flag} ({p.total_posts} posts)")
+            else:
+                lines.append(f"  ❓ {c['title'][:25]} → non analysé")
+
+    lines.append(f"\n📌 Détails: `/mission <group|channel> <id>`")
+    lines.append(f"⚙️ Configurer: `/community_config <group|channel> <id>`")
+
+    for chunk in chunk_text("\n".join(lines), 4000):
+        await update.message.reply_text(chunk, parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+
+@admin_only
+async def cmd_community_config(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """/community_config <group|channel> <tg_id> [clé=valeur ...] — Configurer une communauté."""
+    args = ctx.args or []
+    if len(args) < 2:
+        await update.message.reply_text(
+            "⚙️ *Configuration communautaire*\n\n"
+            "Usage: `/community_config <group|channel> <telegram_id> [options]`\n\n"
+            "Options disponibles:\n"
+            "• `type=crypto` — forcer un type de communauté\n"
+            "• `lang=fr` — langue principale (fr/en/ar/es/pt)\n"
+            "• `tone=professional` — ton (casual/professional/news/crypto/motivational)\n"
+            "• `frequency=daily` — fréquence (hourly/daily/weekly)\n"
+            "• `audience=expert` — audience (general/expert/beginner/mixed)\n"
+            "• `instructions=Évite la politique` — instructions personnalisées\n"
+            "• `forbidden=politique,religion` — sujets interdits (séparés par ,)\n\n"
+            "Exemple:\n"
+            "`/community_config channel -1001234 type=crypto lang=fr tone=casual frequency=daily`\n\n"
+            "Pour voir la config actuelle: `/mission channel <id>`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    chat_type, tg_id = args[0].lower(), args[1]
+    if chat_type not in ("group", "channel"):
+        await update.message.reply_text("❌ Type doit être `group` ou `channel`.", parse_mode=ParseMode.MARKDOWN)
+        return
+
+    # Parse key=value options
+    config: dict = {}
+    valid_keys = {"type": "community_type", "lang": "language", "tone": "tone",
+                  "frequency": "posting_frequency", "audience": "audience_type",
+                  "instructions": "instructions", "forbidden": "forbidden_topics"}
+
+    for arg in args[2:]:
+        if "=" in arg:
+            k, _, v = arg.partition("=")
+            k = k.strip().lower()
+            v = v.strip()
+            if k in valid_keys:
+                mapped = valid_keys[k]
+                if mapped == "forbidden_topics":
+                    config[mapped] = [x.strip() for x in v.split(",")]
+                else:
+                    config[mapped] = v
+
+    if not config:
+        await update.message.reply_text(
+            "❌ Aucune option valide fournie.\nUtilise `/community_config` sans arguments pour voir les options.",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    from .community_intel import save_admin_config, load_profile, save_profile
+    from .utils import get_pool
+    pool = await get_pool()
+
+    # Save admin config
+    await save_admin_config(pool, chat_type, tg_id, config)
+
+    # If profile exists, update it directly
+    profile = await load_profile(pool, chat_type, tg_id)
+    if profile:
+        if "community_type" in config:
+            from .community_intel import COMMUNITY_TYPES
+            profile.community_type = config["community_type"]
+            profile.community_type_label = COMMUNITY_TYPES.get(config["community_type"], config["community_type"])
+        if "language" in config:
+            profile.language = config["language"]
+        if "tone" in config:
+            profile.tone = config["tone"]
+        if "posting_frequency" in config:
+            profile.posting_frequency = config["posting_frequency"]
+        if "audience_type" in config:
+            profile.audience_type = config["audience_type"]
+        if "instructions" in config:
+            profile.admin_instructions = config["instructions"]
+        if "forbidden_topics" in config:
+            profile.forbidden_topics = config["forbidden_topics"]
+        await save_profile(pool, profile)
+
+    lines = [f"✅ *Configuration mise à jour pour `{tg_id}`*\n"]
+    for k, v in config.items():
+        lines.append(f"• `{k}`: `{v}`")
+    lines.append(f"\nVoir le profil complet: `/mission {chat_type} {tg_id}`")
+
+    await update.message.reply_text(
+        "\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb()
+    )
+
+
+@admin_only
+async def cmd_realtime(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """/realtime <crypto|news|finance> [langue] — Récupérer des données en temps réel."""
+    args = ctx.args or []
+    if not args:
+        await update.message.reply_text(
+            "📡 *Données en temps réel*\n\n"
+            "Usage: `/realtime <type> [langue]`\n\n"
+            "Types disponibles:\n"
+            "• `/realtime crypto` — prix des cryptos\n"
+            "• `/realtime news fr` — actualités en français\n"
+            "• `/realtime news en` — news in English\n"
+            "• `/realtime news ar` — أخبار عربية\n"
+            "• `/realtime finance` — marchés financiers\n"
+            "• `/realtime sports fr` — actualités sportives\n"
+            "• `/realtime tech` — actualités tech",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    topic = args[0].lower()
+    lang = args[1].lower() if len(args) > 1 else "fr"
+
+    msg = await update.message.reply_text(f"📡 Récupération en cours...", parse_mode=ParseMode.MARKDOWN)
+
+    try:
+        from .realtime_intel import (
+            get_crypto_prices, format_crypto_update,
+            get_latest_news, format_news_bulletin,
+        )
+
+        if topic == "crypto":
+            prices = await get_crypto_prices(["BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "MATIC", "TON"])
+            if prices:
+                text = format_crypto_update(prices, lang)
+                text += f"\n\n_Source: CoinGecko • Mis à jour maintenant_"
+                await msg.edit_text(text, parse_mode=ParseMode.MARKDOWN)
+            else:
+                await msg.edit_text("❌ Impossible de récupérer les prix crypto.", parse_mode=ParseMode.MARKDOWN)
+
+        else:
+            news = await get_latest_news(topic, lang, max_items=7)
+            if news:
+                text = format_news_bulletin(news, topic, lang)
+                links = "\n".join([f"• [{item['title'][:50]}]({item['link']})" for item in news if item.get('link')][:5])
+                if links:
+                    text += f"\n\n🔗 *Liens:*\n{links}"
+                await msg.edit_text(text, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
+            else:
+                await msg.edit_text(
+                    f"❌ Aucune actualité trouvée pour `{topic}` en `{lang}`.\n"
+                    "Essaie: `/realtime news fr` ou `/realtime crypto`",
+                    parse_mode=ParseMode.MARKDOWN
+                )
+
+    except Exception as e:
+        await msg.edit_text(f"❌ Erreur: `{e}`", parse_mode=ParseMode.MARKDOWN)
+
+
+@admin_only
+async def cmd_community_types(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """/community_types — Liste tous les types de communautés supportés."""
+    from .community_intel import COMMUNITY_TYPES
+    icons = {
+        "crypto": "🪙", "finance": "💰", "business": "💼", "marketing": "📣",
+        "politics": "🏛", "technology": "💻", "ai": "🤖", "education": "📚",
+        "health": "❤️", "sports": "⚽", "entertainment": "🎬", "religion": "🕌",
+        "realestate": "🏠", "ecommerce": "🛒", "investment": "📈",
+        "startups": "🚀", "gaming": "🎮", "science": "🔬", "news": "📰",
+        "lifestyle": "✨", "motivational": "💪", "community": "🤝",
+    }
+    lines = ["🌐 *22 Types de communautés supportés*\n"]
+    for key, label in COMMUNITY_TYPES.items():
+        icon = icons.get(key, "•")
+        lines.append(f"{icon} `{key}` — {label}")
+    lines += [
+        "",
+        "💡 *Fonctionnement automatique:*",
+        "• Le bot analyse le titre, la description et les messages",
+        "• Il détecte automatiquement le type et la langue",
+        "• Il génère une mission personnalisée par IA",
+        "• Le contenu s'adapte en temps réel (prix crypto, news)",
+        "",
+        "⚙️ Pour forcer un type: `/community_config <group|channel> <id> type=crypto`",
+    ]
+    await update.message.reply_text(
+        "\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb()
+    )

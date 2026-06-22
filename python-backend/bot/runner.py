@@ -21,6 +21,8 @@ from .commands import (
     cmd_autonomous, cmd_post_now, cmd_autopost, cmd_autoreply, cmd_generate_image,
     # Persona commands
     cmd_persona_list, cmd_persona_view, cmd_persona_set, cmd_persona_reset,
+    # Community Intelligence commands
+    cmd_mission, cmd_mission_list, cmd_community_config, cmd_realtime, cmd_community_types,
     handle_callback,
 )
 
@@ -71,6 +73,12 @@ COMMANDS = [
     BotCommand("persona_view", "Voir persona: /persona_view <group|channel> <id>"),
     BotCommand("persona_set", "Définir persona: /persona_set <type> <chat> <id>"),
     BotCommand("persona_reset", "Réinitialiser: /persona_reset <group|channel> <id>"),
+    # Community Intelligence
+    BotCommand("mission", "Profil communautaire: /mission <group|channel> <id>"),
+    BotCommand("mission_list", "Tous les profils communautaires actifs"),
+    BotCommand("community_config", "Configurer: /community_config <type> <id> [options]"),
+    BotCommand("community_types", "22 types de communautés supportés"),
+    BotCommand("realtime", "Données temps réel: /realtime <crypto|news|finance> [lang]"),
 ]
 
 
@@ -133,6 +141,13 @@ async def build_app() -> Application:
     app.add_handler(CommandHandler("persona_view", cmd_persona_view))
     app.add_handler(CommandHandler("persona_set", cmd_persona_set))
     app.add_handler(CommandHandler("persona_reset", cmd_persona_reset))
+
+    # Community Intelligence commands
+    app.add_handler(CommandHandler("mission", cmd_mission))
+    app.add_handler(CommandHandler("mission_list", cmd_mission_list))
+    app.add_handler(CommandHandler("community_config", cmd_community_config))
+    app.add_handler(CommandHandler("community_types", cmd_community_types))
+    app.add_handler(CommandHandler("realtime", cmd_realtime))
 
     app.add_handler(CallbackQueryHandler(handle_callback))
 
