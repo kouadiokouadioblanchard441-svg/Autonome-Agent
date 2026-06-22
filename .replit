@@ -69,5 +69,6 @@ packages = ["libxcrypt", "openssl", "postgresql"]
 
 [userenv.shared]
 ADMIN_EMAIL = "simixsupport@gmail.com"
-ADMIN_PASSWORD_HASH = "$2b$12$wQXXgt5GLTFWyvrlLBPPXOvrZm1n9IIRqCsLafZISpOmLFgpnzU6S"
+ADMIN_PASSWORD_HASH = "$2b$12$xol5WiE87xNp8I5OqSEeUeYRbnb/0IyJJaul5QFR9hgSH0F6Bw4t."
 ADMIN_NAME = "Nexus AI Admin"
+ADMIN_TELEGRAM_ID = "7719588543"
