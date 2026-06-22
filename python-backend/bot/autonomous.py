@@ -122,6 +122,31 @@ async def _get_personality(pool, account_id: int) -> dict:
     return {"system_prompt": "", "tone": "casual", "name": "Default"}
 
 
+async def _get_chat_persona(pool, chat_type: str, tg_id: str,
+                            title: str = "", about: str = "",
+                            topic_info: dict | None = None) -> dict:
+    """
+    Load the per-chat persona from DB, or auto-detect and save one.
+    Returns a persona dict with system_prompt, tone, language, etc.
+    """
+    from .personality import load_persona, detect_and_build_persona, save_persona
+    persona = await load_persona(pool, chat_type, tg_id)
+    if persona:
+        return persona
+    # Auto-detect from topic analysis
+    info = topic_info or {}
+    persona = await detect_and_build_persona(
+        title=title,
+        about=about,
+        detected_topic=info.get("topic", "community"),
+        detected_tone=info.get("tone", "casual"),
+        detected_language=info.get("language", "fr"),
+        content_ideas=info.get("content_ideas", []),
+    )
+    await save_persona(pool, chat_type, tg_id, persona)
+    return persona
+
+
 # ── Core: detect chat and register ───────────────────────────────────────────
 
 async def _detect_and_register(client, pool, entity, account_id: int) -> tuple[str, bool]:
@@ -168,27 +193,34 @@ async def _post_content(
     topic_info: dict,
     with_image: bool = True,
     with_video: bool = False,
+    chat_type: str = "group",
 ):
     """Generate and post text + optional image/video to a group or channel."""
     from .content_gen import (
         generate_text, generate_image, generate_image_prompt,
-        search_pexels_video, analyze_group_topic,
+        search_pexels_video,
     )
 
-    title = getattr(entity, "title", "groupe")
-    topic = topic_info.get("topic", title)
-    tone  = topic_info.get("tone", "casual")
-    lang  = topic_info.get("language", "fr")
-    ideas = topic_info.get("content_ideas", [])
-    idea  = random.choice(ideas) if ideas else ""
+    title  = getattr(entity, "title", "groupe")
+    tg_id  = str(getattr(entity, "id", "0"))
+    about  = getattr(entity, "about", "") or ""
 
-    personality = await _get_personality(pool, account_id)
+    # Load per-chat persona (auto-creates one if missing)
+    persona = await _get_chat_persona(
+        pool, chat_type, tg_id, title=title, about=about, topic_info=topic_info
+    )
+
+    topic = persona.get("topic", topic_info.get("topic", title))
+    tone  = persona.get("tone", "casual")
+    lang  = persona.get("language", "fr")
+    ideas = persona.get("content_ideas", topic_info.get("content_ideas", []))
+    idea  = random.choice(ideas) if ideas else ""
 
     # 1 — Generate text
     text = await generate_text(
         topic=topic, tone=tone, language=lang,
         content_idea=idea,
-        personality_prompt=personality["system_prompt"],
+        personality_prompt=persona.get("system_prompt", ""),
     )
     if pool:
         await _log_ai(pool, account_id, "auto_post", f"topic={topic} idea={idea}", text)
@@ -282,9 +314,14 @@ def _make_join_handler(client, pool, account_id: int):
             )
             await asyncio.sleep(delay)
 
+            # Build & save persona for this chat on first join
+            await _get_chat_persona(pool, chat_type, str(entity.id),
+                                    title=title, about=about, topic_info=topic_info)
+
             # Post intro content (with image for channels, text only for groups)
             with_img = is_channel or random.random() < 0.4
-            await _post_content(client, pool, account_id, entity, topic_info, with_image=with_img)
+            await _post_content(client, pool, account_id, entity, topic_info,
+                                 with_image=with_img, chat_type=chat_type)
 
         except Exception as e:
             logger.error("[Account %d] join handler error: %s", account_id, e)
@@ -333,15 +370,19 @@ def _make_message_handler(client, pool, account_id: int):
                 return
             _last_post[chat_key] = now
 
-            # Generate reply
+            # Generate reply using per-chat persona
             from .content_gen import generate_text
-            personality = await _get_personality(pool, account_id) if pool else {"system_prompt": "", "tone": "casual"}
+            tg_id = str(event.chat_id)
+            if pool:
+                persona = await _get_chat_persona(pool, "group", tg_id)
+            else:
+                persona = {"system_prompt": "", "tone": "casual", "language": "fr"}
             reply = await generate_text(
                 topic="réponse à un message",
-                tone=personality["tone"],
-                language="fr",
+                tone=persona.get("tone", "casual"),
+                language=persona.get("language", "fr"),
                 content_idea=f"Réponds à ce message de façon naturelle: {msg_text[:300]}",
-                personality_prompt=personality["system_prompt"],
+                personality_prompt=persona.get("system_prompt", ""),
                 max_tokens=200,
             )
 
@@ -392,6 +433,7 @@ async def _autopost_loop(client, pool, account_id: int, stop_event: asyncio.Even
                         await _post_content(
                             client, pool, account_id, entity, topic_info,
                             with_image=True, with_video=with_video,
+                            chat_type="channel",
                         )
                         interval = random.uniform(AUTOPOST_INTERVAL_MIN, AUTOPOST_INTERVAL_MAX)
                         logger.info(

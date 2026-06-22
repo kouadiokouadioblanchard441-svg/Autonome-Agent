@@ -19,6 +19,8 @@ from .commands import (
     cmd_memories, cmd_settings, cmd_help,
     # Autonomous engine commands
     cmd_autonomous, cmd_post_now, cmd_autopost, cmd_autoreply, cmd_generate_image,
+    # Persona commands
+    cmd_persona_list, cmd_persona_view, cmd_persona_set, cmd_persona_reset,
     handle_callback,
 )
 
@@ -63,7 +65,12 @@ COMMANDS = [
     BotCommand("post_now", "Forcer un post IA: /post_now <acc_id> <chat_id>"),
     BotCommand("autopost", "Toggle auto-post canal: /autopost <channel_id>"),
     BotCommand("autoreply", "Toggle auto-réponse groupe: /autoreply <group_id>"),
-    BotCommand("generate_image", "Générer une image IA: /generate_image <description>"),
+    BotCommand("generate_image", "Générer une image IA: /generate_image <desc>"),
+    # Personas
+    BotCommand("persona_list", "Toutes les personnalités actives"),
+    BotCommand("persona_view", "Voir persona: /persona_view <group|channel> <id>"),
+    BotCommand("persona_set", "Définir persona: /persona_set <type> <chat> <id>"),
+    BotCommand("persona_reset", "Réinitialiser: /persona_reset <group|channel> <id>"),
 ]
 
 
@@ -120,6 +127,12 @@ async def build_app() -> Application:
     app.add_handler(CommandHandler("autopost", cmd_autopost))
     app.add_handler(CommandHandler("autoreply", cmd_autoreply))
     app.add_handler(CommandHandler("generate_image", cmd_generate_image))
+
+    # Persona commands
+    app.add_handler(CommandHandler("persona_list", cmd_persona_list))
+    app.add_handler(CommandHandler("persona_view", cmd_persona_view))
+    app.add_handler(CommandHandler("persona_set", cmd_persona_set))
+    app.add_handler(CommandHandler("persona_reset", cmd_persona_reset))
 
     app.add_handler(CallbackQueryHandler(handle_callback))
 

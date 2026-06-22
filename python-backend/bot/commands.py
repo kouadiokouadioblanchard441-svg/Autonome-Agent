@@ -1257,3 +1257,146 @@ async def cmd_generate_image(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             await msg.edit_text("❌ Génération d'image échouée. Vérifiez OPENAI_API_KEY.")
     except Exception as e:
         await msg.edit_text(f"❌ Erreur: `{e}`", parse_mode=ParseMode.MARKDOWN)
+
+
+# ── Persona commands ───────────────────────────────────────────────────────────
+
+@admin_only
+async def cmd_persona_list(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """/persona_list — Affiche toutes les personnalités disponibles + actives par chat."""
+    from .personality import list_available_personas, load_persona
+
+    lines = [list_available_personas(), "\n"]
+
+    # Show active personas for known groups/channels
+    groups   = await db_fetch("SELECT telegram_id, title FROM telegram_groups ORDER BY title LIMIT 10")
+    channels = await db_fetch("SELECT telegram_id, title FROM telegram_channels ORDER BY title LIMIT 10")
+
+    if groups or channels:
+        lines.append("🗂 *Personnalités actives:*\n")
+        from .utils import get_pool
+        pool = await get_pool()
+        for g in groups:
+            p = await load_persona(pool, "group", g["telegram_id"])
+            icon = f"🎭 {p['name']}" if p else "❓ non définie"
+            lines.append(f"👥 {g['title'][:25]} → {icon}")
+        for c in channels:
+            p = await load_persona(pool, "channel", c["telegram_id"])
+            icon = f"🎭 {p['name']}" if p else "❓ non définie"
+            lines.append(f"📢 {c['title'][:25]} → {icon}")
+
+    lines.append("\n📌 Pour changer: `/persona_set group <id> <type>`")
+    lines.append("Types: `crypto` `motivational` `news` `business` `sport` `tech` `lifestyle` `community` `religious` `education`")
+
+    for chunk in chunk_text("\n".join(lines), 4000):
+        await update.message.reply_text(chunk, parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+
+@admin_only
+async def cmd_persona_view(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """/persona_view <group|channel> <telegram_id> — Voir la persona d'un chat."""
+    args = ctx.args or []
+    if len(args) < 2:
+        await update.message.reply_text(
+            "❌ Usage: `/persona_view <group|channel> <telegram_id>`\n\nExemple:\n`/persona_view channel -1001234567890`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    chat_type, tg_id = args[0].lower(), args[1]
+    if chat_type not in ("group", "channel"):
+        await update.message.reply_text("❌ Type doit être `group` ou `channel`.", parse_mode=ParseMode.MARKDOWN)
+        return
+
+    from .personality import load_persona, format_persona_card
+    from .utils import get_pool
+    pool = await get_pool()
+    persona = await load_persona(pool, chat_type, tg_id)
+
+    if not persona:
+        await update.message.reply_text(
+            f"❓ Aucune personnalité définie pour ce {chat_type}.\n"
+            f"Elle sera créée automatiquement lors du prochain post.\n"
+            f"Ou utilise `/persona_set {chat_type} {tg_id} <type>` pour en définir une maintenant.",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    title_row = await db_fetchrow(
+        f"SELECT title FROM telegram_{'groups' if chat_type == 'group' else 'channels'} WHERE telegram_id = $1", tg_id
+    )
+    title = title_row["title"] if title_row else tg_id
+    card = format_persona_card(persona, title=title, tg_id=tg_id)
+    await update.message.reply_text(card, parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+
+
+@admin_only
+async def cmd_persona_set(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """/persona_set <group|channel> <telegram_id> <type> — Définir une persona."""
+    args = ctx.args or []
+    if len(args) < 3:
+        await update.message.reply_text(
+            "❌ Usage: `/persona_set <group|channel> <telegram_id> <type>`\n\n"
+            "Exemple:\n`/persona_set channel -1001234567890 crypto`\n\n"
+            "Types disponibles: `crypto` `motivational` `news` `business` `sport` `tech` `lifestyle` `community` `religious` `education`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    chat_type, tg_id, persona_type = args[0].lower(), args[1], args[2].lower()
+    if chat_type not in ("group", "channel"):
+        await update.message.reply_text("❌ Type doit être `group` ou `channel`.", parse_mode=ParseMode.MARKDOWN)
+        return
+
+    from .personality import BUILT_IN, save_persona, format_persona_card
+    from .utils import get_pool
+
+    if persona_type not in BUILT_IN:
+        types = ", ".join(f"`{k}`" for k in BUILT_IN)
+        await update.message.reply_text(
+            f"❌ Type inconnu. Disponibles: {types}", parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    pool = await get_pool()
+    persona = BUILT_IN[persona_type].copy()
+    persona["topic"] = persona_type
+    persona["language"] = "fr"
+    persona["content_ideas"] = []
+
+    await save_persona(pool, chat_type, tg_id, persona)
+
+    title_row = await db_fetchrow(
+        f"SELECT title FROM telegram_{'groups' if chat_type == 'group' else 'channels'} WHERE telegram_id = $1", tg_id
+    )
+    title = title_row["title"] if title_row else tg_id
+    card = format_persona_card(persona, title=title, tg_id=tg_id)
+
+    await update.message.reply_text(
+        f"✅ *Personnalité mise à jour!*\n\n{card}\n\n"
+        f"Le prochain post utilisera cette personnalité automatiquement.",
+        parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb()
+    )
+
+
+@admin_only
+async def cmd_persona_reset(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """/persona_reset <group|channel> <telegram_id> — Supprimer la persona (sera recréée auto)."""
+    args = ctx.args or []
+    if len(args) < 2:
+        await update.message.reply_text(
+            "❌ Usage: `/persona_reset <group|channel> <telegram_id>`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    chat_type, tg_id = args[0].lower(), args[1]
+    from .personality import delete_persona
+    from .utils import get_pool
+    pool = await get_pool()
+    await delete_persona(pool, chat_type, tg_id)
+    await update.message.reply_text(
+        f"🗑 Personnalité supprimée pour `{tg_id}`.\n"
+        "Elle sera auto-détectée lors du prochain post.",
+        parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb()
+    )
