@@ -188,7 +188,22 @@ async def cmd_connect(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         from telethon import TelegramClient
         from telethon.sessions import StringSession
 
-        client = TelegramClient(StringSession(), int(API_ID), API_HASH)
+        # Always disconnect and destroy any previous pending client for this phone
+        # to avoid Telegram invalidating the new code due to duplicate sessions
+        if phone in _pending_connections:
+            old_client = _pending_connections.pop(phone, {}).get("client")
+            if old_client:
+                try:
+                    await old_client.disconnect()
+                except Exception:
+                    pass
+
+        client = TelegramClient(
+            StringSession(), int(API_ID), API_HASH,
+            connection_retries=5,
+            retry_delay=1,
+            auto_reconnect=True,
+        )
         await client.connect()
         result = await client.send_code_request(phone)
 
@@ -304,6 +319,11 @@ async def cmd_otp(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     try:
         from telethon.errors import SessionPasswordNeededError
+        # Ensure the client is still connected before sign_in
+        # (the TCP connection can drop while waiting for the user to enter the code)
+        if not client.is_connected():
+            logger.info("Client déconnecté pour %s — reconnexion avant sign_in", phone)
+            await client.connect()
         await client.sign_in(phone, code, phone_code_hash=phone_code_hash)
 
     except Exception as e:
