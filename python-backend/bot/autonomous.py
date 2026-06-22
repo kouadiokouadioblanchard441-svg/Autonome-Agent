@@ -380,7 +380,7 @@ def _make_join_handler(client, pool, account_id: int):
 
 
 def _make_message_handler(client, pool, account_id: int):
-    """Telethon NewMessage handler — auto-reply when is_auto_reply=True."""
+    """Telethon NewMessage handler — humanoid auto-reply."""
     try:
         from telethon import events
     except ImportError:
@@ -389,58 +389,84 @@ def _make_message_handler(client, pool, account_id: int):
     @client.on(events.NewMessage(incoming=True))
     async def on_new_message(event):
         try:
-            # Only reply if explicitly mentioned or in private
             me = await client.get_me()
             if not me:
                 return
 
-            msg_text = event.raw_text or ""
-            mentioned = (
-                event.is_private
-                or (me.username and f"@{me.username}" in msg_text)
-            )
-            if not mentioned:
+            msg_text = (event.raw_text or "").strip()
+            if not msg_text:
                 return
 
-            # Check if auto_reply is enabled for this chat
-            if pool:
-                chat = await event.get_chat()
-                tg_id = str(chat.id)
-                row = await pool.fetchrow(
-                    "SELECT is_auto_reply FROM telegram_groups WHERE telegram_id = $1",
-                    tg_id,
-                )
-                if row and not row["is_auto_reply"]:
+            # Determine if we should reply:
+            # - Always reply in private chats
+            # - In groups: only if mentioned OR auto_reply enabled
+            is_private  = event.is_private
+            is_mentioned = me.username and f"@{me.username}" in msg_text
+
+            if not is_private and not is_mentioned:
+                # Check if auto_reply is enabled for this group
+                if pool:
+                    tg_id = str(event.chat_id)
+                    row = await pool.fetchrow(
+                        "SELECT is_auto_reply FROM telegram_groups WHERE telegram_id = $1", tg_id
+                    )
+                    if not row or not row["is_auto_reply"]:
+                        return
+                else:
                     return
 
-            # Anti-flood: don't reply twice within 60s in same chat
+            # Anti-flood: don't reply twice within 45s in same chat
             chat_key = (account_id, str(event.chat_id))
-            now = asyncio.get_event_loop().time()
-            if now - _last_post.get(chat_key, 0) < 60:
+            now_loop = asyncio.get_event_loop().time()
+            if now_loop - _last_post.get(chat_key, 0) < 45:
                 return
-            _last_post[chat_key] = now
+            _last_post[chat_key] = now_loop
 
-            # Generate reply using per-chat persona
-            from .content_gen import generate_text
-            tg_id = str(event.chat_id)
-            if pool:
-                persona = await _get_chat_persona(pool, "group", tg_id)
-            else:
-                persona = {"system_prompt": "", "tone": "casual", "language": "fr"}
-            reply = await generate_text(
-                topic="réponse à un message",
-                tone=persona.get("tone", "casual"),
-                language=persona.get("language", "fr"),
-                content_idea=f"Réponds à ce message de façon naturelle: {msg_text[:300]}",
-                personality_prompt=persona.get("system_prompt", ""),
-                max_tokens=200,
+            # Extract sender info for humanoid greeting
+            sender     = await event.get_sender()
+            user_id    = getattr(sender, "id", 0)
+            first_name = getattr(sender, "first_name", "") or ""
+            last_name  = getattr(sender, "last_name",  "") or ""
+            username   = getattr(sender, "username",   "") or ""
+
+            # Get or create user profile (for personalization & memory)
+            from .human_ai import (
+                generate_humanoid_response, human_typing_delay,
+                get_or_create_user_profile,
+            )
+            await get_or_create_user_profile(pool, user_id, first_name, last_name, username)
+
+            # Generate humanoid response
+            import datetime as dt
+            hour = dt.datetime.now().hour
+            reply = await generate_humanoid_response(
+                user_message=msg_text,
+                user_id=user_id,
+                first_name=first_name,
+                last_name=last_name,
+                username=username,
+                pool=pool,
+                hour=hour,
             )
 
-            await asyncio.sleep(random.uniform(2, 6))
+            # Simulate human typing delay
+            typing_secs = human_typing_delay(reply)
+            try:
+                async with client.action(event.chat_id, "typing"):
+                    await asyncio.sleep(typing_secs)
+            except Exception:
+                await asyncio.sleep(min(typing_secs, 4))
+
+            # Send reply
             await event.reply(reply)
 
             if pool:
                 await _log_message(pool, account_id, reply, is_ai=True)
+
+            logger.info(
+                "[Account %d] Humanoid reply to %s (%s): %.50s…",
+                account_id, first_name or username, event.chat_id, reply
+            )
 
         except Exception as e:
             logger.error("[Account %d] message handler error: %s", account_id, e)
