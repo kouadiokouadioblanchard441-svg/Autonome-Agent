@@ -18,6 +18,7 @@ export const telegramAccountsTable = pgTable("telegram_accounts", {
   timezone: text("timezone").default("UTC"),
   activeHoursStart: integer("active_hours_start").default(8),
   activeHoursEnd: integer("active_hours_end").default(23),
+  isBotEnabled: boolean("is_bot_enabled").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

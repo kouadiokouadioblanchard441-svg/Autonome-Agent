@@ -38,14 +38,20 @@ def accounts_kb(accounts: list) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(buttons)
 
 
-def account_detail_kb(account_id: int, is_connected: bool) -> InlineKeyboardMarkup:
+def account_detail_kb(account_id: int, is_connected: bool, is_bot_enabled: bool = True) -> InlineKeyboardMarkup:
     action_btn = (
         InlineKeyboardButton("🔴 Déconnecter", callback_data=f"disconnect_{account_id}")
         if is_connected
         else InlineKeyboardButton("🟢 Connecter", callback_data=f"connect_{account_id}")
     )
+    bot_btn = (
+        InlineKeyboardButton("⏹ Désactiver le Bot", callback_data=f"bot_toggle_{account_id}")
+        if is_bot_enabled
+        else InlineKeyboardButton("▶️ Activer le Bot", callback_data=f"bot_toggle_{account_id}")
+    )
     return InlineKeyboardMarkup([
         [action_btn],
+        [bot_btn],
         [
             InlineKeyboardButton("📈 Santé", callback_data=f"health_{account_id}"),
             InlineKeyboardButton("🔥 Warmup", callback_data=f"warmup_{account_id}"),

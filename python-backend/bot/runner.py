@@ -25,6 +25,8 @@ from .commands import (
     cmd_persona_list, cmd_persona_view, cmd_persona_set, cmd_persona_reset,
     # Community Intelligence commands
     cmd_mission, cmd_mission_list, cmd_community_config, cmd_realtime, cmd_community_types,
+    # Bot toggle
+    cmd_bot_toggle,
     handle_callback,
 )
 
@@ -84,6 +86,7 @@ COMMANDS = [
     BotCommand("community_config", "Configurer: /community_config <type> <id> [options]"),
     BotCommand("community_types", "22 types de communautés supportés"),
     BotCommand("realtime", "Données temps réel: /realtime <crypto|news|finance> [lang]"),
+    BotCommand("bot_toggle", "Activer/désactiver le bot IA: /bot_toggle <account_id>"),
 ]
 
 
@@ -156,6 +159,7 @@ async def build_app() -> Application:
     app.add_handler(CommandHandler("community_config", cmd_community_config))
     app.add_handler(CommandHandler("community_types", cmd_community_types))
     app.add_handler(CommandHandler("realtime", cmd_realtime))
+    app.add_handler(CommandHandler("bot_toggle", cmd_bot_toggle))
 
     app.add_handler(CallbackQueryHandler(handle_callback))
 

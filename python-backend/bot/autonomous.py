@@ -37,6 +37,8 @@ _clients: dict[int, Any] = {}
 _tasks: dict[int, list[asyncio.Task]] = {}
 # (account_id, chat_id) → last post time
 _last_post: dict[tuple, float] = {}
+# global stop event set by main.py lifespan
+_global_stop_event: Optional[asyncio.Event] = None
 
 
 # ── DB helpers ────────────────────────────────────────────────────────────────
@@ -421,6 +423,14 @@ def _make_message_handler(client, pool, account_id: int):
             if not me:
                 return
 
+            # Respect the per-account bot toggle
+            if pool:
+                bot_on = await pool.fetchval(
+                    "SELECT is_bot_enabled FROM telegram_accounts WHERE id = $1", account_id
+                )
+                if bot_on is False:
+                    return
+
             msg_text = (event.raw_text or "").strip()
             if not msg_text:
                 return
@@ -516,6 +526,17 @@ async def _autopost_loop(client, pool, account_id: int, stop_event: asyncio.Even
     while not stop_event.is_set():
         try:
             if pool:
+                # Respect the per-account bot toggle: pause the loop if disabled
+                bot_on = await pool.fetchval(
+                    "SELECT is_bot_enabled FROM telegram_accounts WHERE id = $1", account_id
+                )
+                if not bot_on:
+                    try:
+                        await asyncio.wait_for(stop_event.wait(), timeout=60)
+                    except asyncio.TimeoutError:
+                        pass
+                    continue
+
                 rows = await pool.fetch(
                     """SELECT telegram_id, title FROM telegram_channels
                        WHERE is_auto_post = true AND account_id = $1""",
@@ -731,6 +752,8 @@ async def start_all_engines(pool, stop_event: asyncio.Event):
     Load all active accounts from DB and start their autonomous engines.
     Called once at FastAPI startup.
     """
+    global _global_stop_event
+    _global_stop_event = stop_event
     if not pool:
         return
     try:
@@ -763,6 +786,82 @@ async def stop_all_engines():
         for t in tasks:
             t.cancel()
     _tasks.clear()
+
+
+async def _load_history_context(client, pool, account_id: int, max_per_chat: int = 50):
+    """
+    Read recent messages from all joined groups/channels and store them in DB.
+    Called when bot is re-activated so the AI has up-to-date context.
+    """
+    try:
+        from telethon.tl.types import Channel, Chat
+        total = 0
+        async for dialog in client.iter_dialogs():
+            entity = dialog.entity
+            if not isinstance(entity, (Channel, Chat)):
+                continue
+            try:
+                async for msg in client.iter_messages(entity, limit=max_per_chat):
+                    txt = getattr(msg, "message", "") or ""
+                    if not txt or not getattr(msg, "sender_id", None):
+                        continue
+                    try:
+                        await pool.execute(
+                            """INSERT INTO messages (account_id, content, direction, status, is_ai_generated)
+                               VALUES ($1, $2, 'inbound', 'received', false)""",
+                            account_id, txt[:1000],
+                        )
+                        total += 1
+                    except Exception:
+                        pass
+                    await asyncio.sleep(0.02)
+            except Exception as e:
+                logger.debug(
+                    "[Account %d] history read error for '%s': %s",
+                    account_id, getattr(entity, "title", "?"), e
+                )
+        logger.info("[Account %d] ✅ Loaded %d historical messages for context", account_id, total)
+    except Exception as e:
+        logger.error("[Account %d] _load_history_context failed: %s", account_id, e)
+
+
+async def toggle_account_engine(account_id: int, enable: bool) -> str:
+    """
+    Toggle the autonomous bot on/off for a specific account.
+    - enable=True  → mark enabled in DB; start engine + load history if not running
+    - enable=False → mark disabled in DB; running loops self-pause via is_bot_enabled check
+    Returns 'enabled' or 'disabled'.
+    """
+    global _global_stop_event
+    from .utils import get_pool
+    pool = await get_pool()
+
+    await pool.execute(
+        "UPDATE telegram_accounts SET is_bot_enabled = $1 WHERE id = $2",
+        enable, account_id,
+    )
+
+    if not enable:
+        logger.info("[Account %d] Bot DISABLED via toggle", account_id)
+        return "disabled"
+
+    logger.info("[Account %d] Bot ENABLED via toggle", account_id)
+    if account_id not in _clients:
+        # Engine not running yet — start it now
+        stop_ev = _global_stop_event or asyncio.Event()
+        asyncio.create_task(
+            start_account_engine(account_id, pool, stop_ev),
+            name=f"engine-toggle-{account_id}",
+        )
+    else:
+        # Engine already running — trigger a history reload in background
+        client = _clients[account_id]
+        asyncio.create_task(
+            _load_history_context(client, pool, account_id, max_per_chat=30),
+            name=f"history-reload-{account_id}",
+        )
+
+    return "enabled"
 
 
 async def trigger_post_now(account_id: int, chat_id: str, with_image: bool = True, with_video: bool = False):

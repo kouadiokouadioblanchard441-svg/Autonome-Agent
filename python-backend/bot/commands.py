@@ -1206,8 +1206,39 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             f"📌 Statut: {fmt_status(acc['status'])}\n"
             f"💬 Messages: `{acc['messages_count']}`\n"
             f"👥 Groupes: `{acc['groups_count']}`\n"
+            f"🤖 Bot IA: {'✅ Actif' if acc.get('is_bot_enabled', True) else '⏹ Inactif'}\n"
         )
-        await query.edit_message_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=account_detail_kb(acc_id, acc["is_connected"]))
+        await query.edit_message_text(
+            text, parse_mode=ParseMode.MARKDOWN,
+            reply_markup=account_detail_kb(acc_id, acc["is_connected"], bool(acc.get("is_bot_enabled", True)))
+        )
+
+    elif data.startswith("bot_toggle_"):
+        acc_id = int(data.split("_")[2])
+        acc = await db_fetchrow("SELECT phone_number, username, is_bot_enabled FROM telegram_accounts WHERE id = $1", acc_id)
+        if not acc:
+            await query.edit_message_text("❌ Compte introuvable.", reply_markup=back_to_menu_kb())
+            return
+        new_val = not bool(acc.get("is_bot_enabled", True))
+        try:
+            from .autonomous import toggle_account_engine
+            await toggle_account_engine(acc_id, new_val)
+        except Exception as e:
+            await db_execute("UPDATE telegram_accounts SET is_bot_enabled = $1 WHERE id = $2", new_val, acc_id)
+            logger.warning("toggle_account_engine fallback DB update: %s", e)
+        name = acc["username"] or acc["phone_number"]
+        if new_val:
+            msg = (
+                f"▶️ *Bot IA activé* pour `{name}`\n\n"
+                "L'IA reprend l'auto-post et les réponses automatiques.\n"
+                "Chargement de l'historique des messages en cours… ⏳"
+            )
+        else:
+            msg = (
+                f"⏹ *Bot IA désactivé* pour `{name}`\n\n"
+                "L'IA ne répondra plus et ne postera plus automatiquement."
+            )
+        await query.edit_message_text(msg, parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
 
     elif data.startswith("disconnect_"):
         acc_id = int(data.split("_")[1])
@@ -2053,3 +2084,56 @@ async def cmd_community_types(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb()
     )
+
+
+@admin_only
+async def cmd_bot_toggle(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """/bot_toggle [account_id] — Activer/désactiver le bot IA sur un compte."""
+    args = ctx.args or []
+
+    if not args:
+        accounts = await db_fetch("SELECT id, phone_number, username, is_bot_enabled FROM telegram_accounts ORDER BY id")
+        if not accounts:
+            await update.message.reply_text("⚠️ Aucun compte enregistré.", reply_markup=back_to_menu_kb())
+            return
+        lines = ["🤖 *Statut Bot IA par compte*\n"]
+        for a in accounts:
+            name = a["username"] or a["phone_number"]
+            state = "✅ Actif" if a.get("is_bot_enabled", True) else "⏹ Inactif"
+            lines.append(f"`{a['id']}` {name} — {state}")
+        lines.append("\n💡 `/bot_toggle <id>` pour basculer un compte")
+        await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
+        return
+
+    try:
+        acc_id = int(args[0])
+    except ValueError:
+        await update.message.reply_text("❌ Usage: `/bot_toggle <account_id>`", parse_mode=ParseMode.MARKDOWN)
+        return
+
+    acc = await db_fetchrow("SELECT id, phone_number, username, is_bot_enabled FROM telegram_accounts WHERE id = $1", acc_id)
+    if not acc:
+        await update.message.reply_text(f"❌ Compte `{acc_id}` introuvable.", parse_mode=ParseMode.MARKDOWN)
+        return
+
+    new_val = not bool(acc.get("is_bot_enabled", True))
+    try:
+        from .autonomous import toggle_account_engine
+        await toggle_account_engine(acc_id, new_val)
+    except Exception as e:
+        await db_execute("UPDATE telegram_accounts SET is_bot_enabled = $1 WHERE id = $2", new_val, acc_id)
+        logger.warning("cmd_bot_toggle fallback DB update: %s", e)
+
+    name = acc["username"] or acc["phone_number"]
+    if new_val:
+        reply = (
+            f"▶️ *Bot IA activé* pour `{name}`\n\n"
+            "✅ L'IA reprend l'auto-post et les réponses automatiques.\n"
+            "📚 Chargement de l'historique des messages en cours…"
+        )
+    else:
+        reply = (
+            f"⏹ *Bot IA désactivé* pour `{name}`\n\n"
+            "L'IA ne répondra plus et ne postera plus automatiquement sur ce compte."
+        )
+    await update.message.reply_text(reply, parse_mode=ParseMode.MARKDOWN, reply_markup=back_to_menu_kb())
