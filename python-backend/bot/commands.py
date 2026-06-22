@@ -192,7 +192,7 @@ async def cmd_connect(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if len(args) >= 2:
         code_arg = "".join(filter(str.isdigit, args[1]))
         if code_arg and len(code_arg) >= 4:
-            pending = _pending_connections.get(phone)
+            pending = _pending_connections.get(phone) or await _load_pending_from_db(phone)
             if pending:
                 # Pending connection exists — verify without sending a new OTP
                 logger.info("cmd_connect: code fourni en ligne, vérification directe pour %s", phone)
@@ -286,6 +286,9 @@ async def cmd_connect(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             "created_at": time.time(),
         }
 
+        # Persist to DB so OTP session survives engine restarts
+        await _save_pending_to_db(phone, client.session.save(), result.phone_code_hash)
+
         await msg.edit_text(
             f"✅ *Code OTP envoyé sur `{phone}`!*\n\n"
             f"📲 Ouvre Telegram et copie le code reçu, puis entre:\n\n"
@@ -298,11 +301,94 @@ async def cmd_connect(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         logger.error("cmd_connect ERREUR pour %s: %s", phone, e, exc_info=True)
+        try:
+            from telethon.errors import FloodWaitError as _FWE
+            if isinstance(e, _FWE):
+                mins, secs = divmod(e.seconds, 60)
+                wait_str = f"{mins}min {secs}s" if mins else f"{secs}s"
+                await msg.edit_text(
+                    f"⏳ *Telegram bloque temporairement les demandes OTP*\n\n"
+                    f"Trop de tentatives en peu de temps.\n"
+                    f"Attends *{wait_str}* puis réessaie:\n\n"
+                    f"`/connect {phone}`",
+                    parse_mode=ParseMode.MARKDOWN
+                )
+                return
+        except ImportError:
+            pass
         await msg.edit_text(
             f"❌ *Échec de l'envoi du code*\n\n`{e}`\n\n"
             f"Vérifie que le numéro est correct (format: `+447490358072`).",
             parse_mode=ParseMode.MARKDOWN
         )
+
+
+async def _save_pending_to_db(phone: str, session_string: str, phone_code_hash: str):
+    """Persist pending OTP state to DB so it survives engine restarts."""
+    try:
+        import json, time as _t
+        data = json.dumps({"session": session_string, "hash": phone_code_hash, "ts": int(_t.time())})
+        await db_execute(
+            """INSERT INTO telegram_accounts (phone_number, session_data, status, is_connected, health_score)
+               VALUES ($1, $2, 'pending', false, 100)
+               ON CONFLICT (phone_number) DO UPDATE SET
+                 session_data = EXCLUDED.session_data,
+                 status       = 'pending',
+                 is_connected = false""",
+            phone, data,
+        )
+        logger.info("_save_pending_to_db: état OTP sauvegardé pour %s", phone)
+    except Exception as e:
+        logger.warning("_save_pending_to_db échoué pour %s: %s", phone, e)
+
+
+async def _load_pending_from_db(phone: str) -> dict | None:
+    """Restore a pending OTP session from DB. Returns pending dict or None."""
+    try:
+        import json, time as _t
+        from telethon import TelegramClient
+        from telethon.sessions import StringSession
+
+        row = await db_fetchrow(
+            "SELECT session_data FROM telegram_accounts WHERE phone_number = $1 AND status = 'pending'",
+            phone,
+        )
+        if not row or not row["session_data"]:
+            return None
+
+        try:
+            data = json.loads(row["session_data"])
+        except Exception:
+            return None
+
+        if not data.get("hash") or not data.get("session"):
+            return None
+
+        age = _t.time() - data.get("ts", 0)
+        if age > 300:
+            logger.info("_load_pending_from_db: OTP expiré (%.0fs) pour %s", age, phone)
+            return None
+
+        API_ID   = os.getenv("TELEGRAM_API_ID")
+        API_HASH = os.getenv("TELEGRAM_API_HASH")
+        client   = TelegramClient(
+            StringSession(data["session"]), int(API_ID), API_HASH,
+            connection_retries=5, retry_delay=1, auto_reconnect=True,
+        )
+        await client.connect()
+
+        pending = {
+            "client":            client,
+            "phone_code_hash":   data["hash"],
+            "awaiting_password": False,
+            "created_at":        data.get("ts", _t.time()),
+        }
+        _pending_connections[phone] = pending
+        logger.info("_load_pending_from_db: session OTP restaurée depuis DB pour %s (âge %.0fs)", phone, age)
+        return pending
+    except Exception as e:
+        logger.warning("_load_pending_from_db échoué pour %s: %s", phone, e)
+        return None
 
 
 async def _save_session(client, phone: str, msg) -> bool:
@@ -398,7 +484,7 @@ async def cmd_otp(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN
         )
         return
-    pending = _pending_connections.get(phone)
+    pending = _pending_connections.get(phone) or await _load_pending_from_db(phone)
 
     if not pending:
         await update.message.reply_text(
