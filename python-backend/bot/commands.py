@@ -267,17 +267,38 @@ async def _save_session(client, phone: str, msg) -> bool:
         )
 
         mention = f"@{username}" if username else display_name or phone
+
+        # Retrieve the newly created/updated account id to start the engine
+        acc_row = await db_fetchrow("SELECT id FROM telegram_accounts WHERE phone_number = $1", phone)
+        acc_id  = acc_row["id"] if acc_row else None
+
         await msg.edit_text(
             f"✅ *Compte connecté avec succès!*\n\n"
             f"📱 Numéro: `{phone}`\n"
             f"👤 Compte: {mention}\n"
             f"🎯 Nom: {display_name or '—'}\n\n"
-            f"🤖 L'engine autonome démarre automatiquement.\n"
-            f"Utilise `/accounts` pour voir tes comptes.",
+            f"🤖 Démarrage de l'engine autonome…",
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=back_to_menu_kb()
         )
-        logger.info("✅ Account connected: %s (@%s)", phone, username)
+        logger.info("✅ Account connected: %s (@%s) id=%s", phone, username, acc_id)
+
+        # Start the autonomous engine immediately for this account
+        if acc_id:
+            try:
+                from .autonomous import start_account_engine, _global_stop_event
+                from .utils import get_pool
+                pool = await get_pool()
+                import asyncio as _aio
+                stop_ev = _global_stop_event or _aio.Event()
+                _aio.create_task(
+                    start_account_engine(acc_id, pool, stop_ev),
+                    name=f"engine-connect-{acc_id}",
+                )
+                logger.info("[Account %d] Engine lancé après connexion OTP", acc_id)
+            except Exception as eng_err:
+                logger.warning("[Account %d] Impossible de démarrer l'engine: %s", acc_id, eng_err)
+
         return True
     except Exception as e:
         logger.error("_save_session failed for %s: %s", phone, e)

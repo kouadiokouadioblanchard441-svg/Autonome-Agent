@@ -342,6 +342,24 @@ async def get_status():
     }
 
 
+async def _start_engine_for_account(account_id: int):
+    """Start the autonomous engine for a freshly connected account."""
+    if not (TELETHON_AVAILABLE and db_pool and _bot_stop_event):
+        return
+    try:
+        from bot.autonomous import start_account_engine, _clients as _eng_clients
+        if account_id in _eng_clients:
+            logger.info(f"[Account {account_id}] Engine already running, skipping start")
+            return
+        asyncio.create_task(
+            start_account_engine(account_id, db_pool, _bot_stop_event),
+            name=f"engine-post-connect-{account_id}",
+        )
+        logger.info(f"[Account {account_id}] ✅ Engine lancé après connexion")
+    except Exception as e:
+        logger.warning(f"[Account {account_id}] Could not start engine: {e}")
+
+
 @app.post("/telegram/connect")
 async def connect_account(req: AccountConnectRequest):
     """Step 1 — Send OTP code to the phone number via Telethon."""
@@ -364,7 +382,7 @@ async def connect_account(req: AccountConnectRequest):
         await client.connect()
         active_clients[req.account_id] = client
 
-        # If already authorized (existing session), mark connected immediately
+        # If already authorized (existing session), mark connected and start engine immediately
         if await client.is_user_authorized():
             me = await client.get_me()
             session_string = client.session.save()
@@ -376,6 +394,7 @@ async def connect_account(req: AccountConnectRequest):
                        WHERE id = $1""",
                     req.account_id, me.username if me else None, session_string
                 )
+            await _start_engine_for_account(req.account_id)
             return {"success": True, "message": "Compte déjà connecté", "needs_code": False, "username": me.username if me else None}
 
         # Send OTP — store phone_code_hash for the verify step
@@ -420,6 +439,7 @@ async def verify_code(req: VerifyCodeRequest):
                 req.account_id, me.username if me else None, session_string
             )
         logger.info(f"Compte {req.account_id} connecté avec succès (@{me.username if me else '?'})")
+        await _start_engine_for_account(req.account_id)
         return {"success": True, "message": "Compte connecté avec succès", "needs_2fa": False, "username": me.username if me else None}
 
     except Exception as e:
@@ -453,6 +473,7 @@ async def verify_2fa(req: Verify2FARequest):
                 req.account_id, me.username if me else None, session_string
             )
         logger.info(f"Compte {req.account_id} connecté via 2FA (@{me.username if me else '?'})")
+        await _start_engine_for_account(req.account_id)
         return {"success": True, "message": "Compte connecté avec succès (2FA)", "username": me.username if me else None}
 
     except Exception as e:
