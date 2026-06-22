@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import asyncpg
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -730,6 +730,37 @@ async def get_communities_status():
     except Exception as e:
         logger.error("get_communities_status: %s", e)
         return {"groups": [], "channels": [], "error": str(e)}
+
+
+@app.post("/monitoring/reports/trigger")
+async def trigger_report(request: Request):
+    """Manually trigger a daily or weekly report and send to admin."""
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        pass
+    report_type = body.get("type", "daily")
+
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    if not bot_token:
+        return {"ok": False, "message": "Bot token non configuré"}
+    if not db_pool:
+        return {"ok": False, "message": "DB non connectée"}
+
+    from telegram import Bot as TGBot
+    from bot.reports import generate_daily_report, generate_weekly_report
+    bot = TGBot(token=bot_token)
+    try:
+        if report_type == "weekly":
+            await generate_weekly_report(db_pool, bot)
+        else:
+            await generate_daily_report(db_pool, bot)
+        admin_id = os.getenv("ADMIN_TELEGRAM_ID", "")
+        return {"ok": True, "message": f"Rapport {report_type} envoyé à l'admin ({admin_id[:4]}***)"}
+    except Exception as e:
+        logger.error("trigger_report: %s", e)
+        return {"ok": False, "message": str(e)}
 
 
 @app.put("/monitoring/communities/{chat_type}/{tg_id}/schedule")

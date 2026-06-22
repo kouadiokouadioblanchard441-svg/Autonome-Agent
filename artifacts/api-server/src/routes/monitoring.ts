@@ -12,7 +12,7 @@ router.get("/monitoring/status", async (_req, res): Promise<void> => {
     let engineStatus: any = null;
     try {
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 3000);
+      const timer = setTimeout(() => ctrl.abort(), 8000);
       const pyRes = await fetch(`${PYTHON_URL}/monitoring/status`, { signal: ctrl.signal });
       clearTimeout(timer);
       engineStatus = await pyRes.json();
