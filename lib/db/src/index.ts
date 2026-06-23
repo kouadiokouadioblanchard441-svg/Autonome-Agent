@@ -7,15 +7,17 @@ const { Pool } = pg;
 const connectionString = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
 
 if (!connectionString) {
-  throw new Error(
-    "SUPABASE_DATABASE_URL or DATABASE_URL must be set.",
+  console.error(
+    "[db] ATTENTION: SUPABASE_DATABASE_URL ou DATABASE_URL non définie — les routes DB retourneront 503."
   );
 }
 
-export const pool = new Pool({
-  connectionString,
-  ssl: { rejectUnauthorized: false },
-});
-export const db = drizzle(pool, { schema });
+export const pool = connectionString
+  ? new Pool({ connectionString, ssl: { rejectUnauthorized: false } })
+  : null as unknown as pg.Pool;
+
+export const db = connectionString
+  ? drizzle(pool, { schema })
+  : null as unknown as ReturnType<typeof drizzle>;
 
 export * from "./schema";

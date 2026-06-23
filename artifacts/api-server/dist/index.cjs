@@ -70289,15 +70289,12 @@ var clientPortals = pgTable("client_portals", {
 var { Pool: Pool3 } = esm_default;
 var connectionString = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
 if (!connectionString) {
-  throw new Error(
-    "SUPABASE_DATABASE_URL or DATABASE_URL must be set."
+  console.error(
+    "[db] ATTENTION: SUPABASE_DATABASE_URL ou DATABASE_URL non d\xE9finie \u2014 les routes DB retourneront 503."
   );
 }
-var pool = new Pool3({
-  connectionString,
-  ssl: { rejectUnauthorized: false }
-});
-var db = drizzle(pool, { schema: schema_exports });
+var pool = connectionString ? new Pool3({ connectionString, ssl: { rejectUnauthorized: false } }) : null;
+var db = connectionString ? drizzle(pool, { schema: schema_exports }) : null;
 
 // src/lib/logger.ts
 var import_pino = __toESM(require_pino(), 1);
@@ -74046,6 +74043,22 @@ app.use(
     }
   })
 );
+app.get("/api/health", (_req, res) => {
+  res.json({
+    status: "ok",
+    db: db ? "connected" : "unavailable",
+    timestamp: (/* @__PURE__ */ new Date()).toISOString()
+  });
+});
+app.use("/api", (req, res, next) => {
+  if (!db) {
+    res.status(503).json({
+      error: "Base de donn\xE9es non configur\xE9e \u2014 v\xE9rifiez SUPABASE_DATABASE_URL dans les variables d'environnement Plesk."
+    });
+    return;
+  }
+  next();
+});
 app.use("/api", routes_default);
 var app_default = app;
 
