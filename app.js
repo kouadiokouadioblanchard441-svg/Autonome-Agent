@@ -1,6 +1,4 @@
-// Point d'entree Phusion Passenger / Plesk
-// Passenger cherche app.js ou server.js a la racine
-import('./artifacts/api-server/dist/index.mjs').catch((err) => {
-  console.error('[app.js] Echec demarrage API:', err);
-  process.exit(1);
-});
+'use strict';
+// Point d'entree CJS pour Phusion Passenger / Plesk
+// Passenger cherche app.js a la racine et l'execute avec require()
+require('./artifacts/api-server/dist/index.cjs');
